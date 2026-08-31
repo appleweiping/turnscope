@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible defect in TurnScope
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve TurnScope. Remove or redact sensitive conversation data.
+  - type: input
+    id: version
+    attributes:
+      label: TurnScope version
+      placeholder: 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: python
+    attributes:
+      label: Python version
+      options: ["3.10", "3.11", "3.12", "3.13", "3.14", Other]
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Include the expected behavior and the smallest reproducible example.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and logs
+      description: Include OS, installation method, command, traceback, and sanitized input shape.
+      render: shell
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and removed secrets or private conversation data.
+          required: true

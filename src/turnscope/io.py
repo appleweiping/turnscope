@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any, NoReturn, TextIO
@@ -18,10 +18,18 @@ class DataFormatError(ValueError):
     def __init__(self, location: str, message: str) -> None:
         super().__init__(f"{location}: {message}")
         self.location = location
+        self.message = message
 
 
 def _reject_non_finite(value: str) -> NoReturn:
     raise ValueError(f"non-finite number {value!r} is not valid JSON")
+
+
+def _finite_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"non-finite number {value!r} is not valid JSON")
+    return parsed
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -33,8 +41,72 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def parse_json_value(text: str, *, location: str = "JSON") -> Any:
+    """Parse one strict JSON value with duplicate and non-finite checks."""
+    try:
+        value = json.loads(
+            text,
+            parse_constant=_reject_non_finite,
+            parse_float=_finite_float,
+            object_pairs_hook=_reject_duplicate_keys,
+        )
+    except json.JSONDecodeError as error:
+        raise DataFormatError(
+            location,
+            f"invalid JSON at line {error.lineno}, column {error.colno}: {error.msg}",
+        ) from error
+    except ValueError as error:
+        raise DataFormatError(location, str(error)) from error
+    return _normalize_parsed_json(value, location)
+
+
+def _normalize_string(value: str, location: str) -> str:
+    """Combine valid escaped surrogate pairs and reject unpaired surrogates."""
+    try:
+        return value.encode("utf-16", "surrogatepass").decode("utf-16")
+    except UnicodeError as error:
+        raise DataFormatError(location, "string contains an unpaired Unicode surrogate") from error
+
+
+def _normalize_parsed_json(value: Any, location: str) -> Any:
+    if value is None or isinstance(value, (bool, int)):
+        return value
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise DataFormatError(location, "non-finite number is not valid JSON")
+        return value
+    if isinstance(value, str):
+        return _normalize_string(value, location)
+    if isinstance(value, list):
+        return [
+            _normalize_parsed_json(item, f"{location}[{index}]") for index, item in enumerate(value)
+        ]
+    if isinstance(value, dict):
+        normalized: dict[str, Any] = {}
+        for key, item in value.items():
+            normalized_key = _normalize_string(key, f"{location} object key")
+            if normalized_key in normalized:
+                raise DataFormatError(
+                    location,
+                    f"duplicate object key {normalized_key!r} after Unicode normalization",
+                )
+            normalized[normalized_key] = _normalize_parsed_json(
+                item, f"{location}.{normalized_key}"
+            )
+        return normalized
+    raise DataFormatError(location, "expected a JSON value")
+
+
 def _validate_json_value(value: Any, location: str) -> None:
-    if value is None or isinstance(value, (bool, str, int)):
+    if value is None or isinstance(value, (bool, int)):
+        return
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeError as error:
+            raise DataFormatError(
+                location, "string contains an unpaired Unicode surrogate"
+            ) from error
         return
     if isinstance(value, float):
         if not math.isfinite(value):
@@ -46,6 +118,7 @@ def _validate_json_value(value: Any, location: str) -> None:
         return
     if isinstance(value, dict) and all(isinstance(key, str) for key in value):
         for key, item in value.items():
+            _validate_json_value(key, f"{location} object key")
             _validate_json_value(item, f"{location}.{key}")
         return
     raise DataFormatError(location, "expected a JSON value")
@@ -152,67 +225,77 @@ def conversation_to_dict(item: Conversation) -> dict[str, JsonValue]:
     return result
 
 
-def load_conversations(stream: TextIO, *, format: str = "json") -> list[Conversation]:
-    """Load JSON (one object or array) or JSONL (one object per nonblank line)."""
+def iter_conversations(stream: TextIO, *, format: str = "json") -> Iterator[Conversation]:
+    """Yield native conversations, reading JSONL one physical line at a time.
+
+    Standard-library JSON parsing still materializes a complete ``json``
+    document. Use ``jsonl`` when bounded input memory is required.
+    """
     if format == "jsonl":
-        result: list[Conversation] = []
         for line_number, line in enumerate(stream, 1):
             if not line.strip():
                 continue
-            try:
-                value = json.loads(
-                    line,
-                    parse_constant=_reject_non_finite,
-                    object_pairs_hook=_reject_duplicate_keys,
-                )
-            except json.JSONDecodeError as error:
-                raise DataFormatError(
-                    f"line {line_number}", f"invalid JSON: {error.msg}"
-                ) from error
-            except ValueError as error:
-                raise DataFormatError(f"line {line_number}", str(error)) from error
-            result.append(conversation_from_dict(value, f"line {line_number}"))
-        return result
+            value = parse_json_value(line, location=f"line {line_number}")
+            yield conversation_from_dict(value, f"line {line_number}")
+        return
     if format != "json":
         raise ValueError("format must be 'json' or 'jsonl'")
     try:
         value = json.load(
             stream,
             parse_constant=_reject_non_finite,
+            parse_float=_finite_float,
             object_pairs_hook=_reject_duplicate_keys,
         )
     except json.JSONDecodeError as error:
         raise DataFormatError("JSON", f"invalid JSON: {error.msg}") from error
     except ValueError as error:
         raise DataFormatError("JSON", str(error)) from error
-    values = value if isinstance(value, list) else [value]
-    return [
-        conversation_from_dict(item, f"conversations[{index}]") for index, item in enumerate(values)
-    ]
+    normalized = _normalize_parsed_json(value, "JSON")
+    values = normalized if isinstance(normalized, list) else [normalized]
+    for index, item in enumerate(values):
+        yield conversation_from_dict(item, f"conversations[{index}]")
+
+
+def load_conversations(stream: TextIO, *, format: str = "json") -> list[Conversation]:
+    """Materialize native conversations from JSON or JSONL."""
+    return list(iter_conversations(stream, format=format))
+
+
+def iter_path(path: str | Path, *, format: str | None = None) -> Iterator[Conversation]:
+    """Yield conversations from a path while keeping the file lifetime scoped."""
+    resolved = Path(path)
+    selected = format or ("jsonl" if resolved.suffix.lower() == ".jsonl" else "json")
+    try:
+        with resolved.open(encoding="utf-8") as stream:
+            yield from iter_conversations(stream, format=selected)
+    except UnicodeError as error:
+        raise DataFormatError(str(resolved), "input is not valid UTF-8") from error
 
 
 def load_path(path: str | Path, *, format: str | None = None) -> list[Conversation]:
-    resolved = Path(path)
-    selected = format or ("jsonl" if resolved.suffix.lower() == ".jsonl" else "json")
-    with resolved.open(encoding="utf-8") as stream:
-        return load_conversations(stream, format=selected)
+    return list(iter_path(path, format=format))
 
 
 def dump_conversations(items: Iterable[Conversation], stream: TextIO, *, format: str) -> None:
-    values = list(items)
     if format == "json":
-        json.dump(
-            [conversation_to_dict(item) for item in values],
-            stream,
-            indent=2,
-            ensure_ascii=False,
-            allow_nan=False,
-        )
-        stream.write("\n")
+        stream.write("[")
+        first = True
+        for index, item in enumerate(items):
+            value = conversation_to_dict(item)
+            _validate_json_value(value, f"conversations[{index}]")
+            rendered = json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False)
+            if first:
+                stream.write("\n")
+                first = False
+            else:
+                stream.write(",\n")
+            stream.write("\n".join(f"  {line}" for line in rendered.splitlines()))
+        stream.write("\n]\n" if not first else "]\n")
     elif format == "jsonl":
-        for item in values:
-            stream.write(
-                json.dumps(conversation_to_dict(item), ensure_ascii=False, allow_nan=False) + "\n"
-            )
+        for index, item in enumerate(items):
+            value = conversation_to_dict(item)
+            _validate_json_value(value, f"line {index + 1}")
+            stream.write(json.dumps(value, ensure_ascii=False, allow_nan=False) + "\n")
     else:
         raise ValueError("format must be 'json' or 'jsonl'")

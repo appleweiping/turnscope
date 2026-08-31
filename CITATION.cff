@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If TurnScope supports your work, cite the software using this metadata."
+title: TurnScope
+type: software
+authors:
+  - family-names: Wei
+    given-names: Ping
+repository-code: "https://github.com/appleweiping/turnscope"
+url: "https://github.com/appleweiping/turnscope"
+license: MIT
+version: 0.2.0
+date-released: 2026-08-31

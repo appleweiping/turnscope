@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "turnscope"
-version = "0.1.0"
+version = "0.2.0"
 description = "Deterministic context-window construction and reliability audits for conversation data"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,11 +13,13 @@ authors = [{ name = "Wei Ping" }]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Text Processing :: Linguistic",
   "Typing :: Typed",
 ]
@@ -31,18 +33,41 @@ dev = [
   "pytest>=8.3",
   "pytest-cov>=5.0",
   "ruff>=0.6",
+  "twine>=5",
 ]
 
 [project.scripts]
 turnscope = "turnscope.cli:main"
 
 [project.urls]
+Changelog = "https://github.com/appleweiping/turnscope/blob/main/CHANGELOG.md"
+Discussions = "https://github.com/appleweiping/turnscope/discussions"
 Documentation = "https://github.com/appleweiping/turnscope#readme"
 Issues = "https://github.com/appleweiping/turnscope/issues"
 Source = "https://github.com/appleweiping/turnscope"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/turnscope"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/.github",
+  "/benchmarks",
+  "/docs",
+  "/examples",
+  "/src",
+  "/tests",
+  "/CHANGELOG.md",
+  "/CITATION.cff",
+  "/CODE_OF_CONDUCT.md",
+  "/CONTRIBUTING.md",
+  "/LICENSE",
+  "/MAINTAINERS.md",
+  "/README.md",
+  "/SECURITY.md",
+  "/SUPPORT.md",
+  "/pyproject.toml",
+]
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers --strict-config --cov=turnscope --cov-report=term-missing --cov-fail-under=90"

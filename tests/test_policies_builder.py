@@ -73,9 +73,16 @@ def test_custom_token_counter_must_return_non_negative_integer(
     "factory",
     [
         lambda: TurnWindowPolicy(-1),
+        lambda: TurnWindowPolicy(True),
+        lambda: TurnWindowPolicy(1.5),
         lambda: TokenBudgetPolicy(-1),
+        lambda: TokenBudgetPolicy(True),
+        lambda: TokenBudgetPolicy(1, include_target=1),
         lambda: TimeWindowPolicy(timedelta(seconds=-1)),
+        lambda: TimeWindowPolicy(1),
         lambda: ReplyChainPolicy(-1),
+        lambda: ReplyChainPolicy(True),
+        lambda: ReplyChainPolicy(1.5),
     ],
 )
 def test_invalid_policy_values(factory) -> None:  # type: ignore[no-untyped-def]

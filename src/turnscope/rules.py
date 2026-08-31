@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .models import Conversation, Issue, Severity
-from .policies import TokenCounter, whitespace_tokens
+from .policies import TokenCounter, count_text_tokens, count_tokens, whitespace_tokens
 
 
 class AuditRule(Protocol):
@@ -55,7 +55,7 @@ class DuplicateIdRule:
                 self.severity,
                 f"utterance ID {item_id!r} appears {count} times",
                 conversation.id,
-                tuple(item.id for item in conversation.utterances if item.id == item_id),
+                (item_id,) * count,
                 {"count": count},
             )
             for item_id, count in counts.items()
@@ -147,15 +147,19 @@ class TokenCountRule:
     name: str = "token-count"
 
     def __post_init__(self) -> None:
-        if self.tolerance < 0:
-            raise ValueError("tolerance must be non-negative")
+        if (
+            isinstance(self.tolerance, bool)
+            or not isinstance(self.tolerance, int)
+            or self.tolerance < 0
+        ):
+            raise ValueError("tolerance must be a non-negative integer")
 
     def check(self, conversation: Conversation) -> tuple[Issue, ...]:
         issues: list[Issue] = []
         for item in conversation.utterances:
             if item.token_count is None:
                 continue
-            observed = self.token_counter(item.text)
+            observed = count_text_tokens(item.text, self.token_counter)
             if abs(observed - item.token_count) > self.tolerance:
                 issues.append(
                     Issue(
@@ -180,14 +184,11 @@ class ConversationBudgetRule:
     name: str = "token-budget"
 
     def __post_init__(self) -> None:
-        if self.budget < 0:
-            raise ValueError("budget must be non-negative")
+        if isinstance(self.budget, bool) or not isinstance(self.budget, int) or self.budget < 0:
+            raise ValueError("budget must be a non-negative integer")
 
     def check(self, conversation: Conversation) -> tuple[Issue, ...]:
-        total = sum(
-            item.token_count if item.token_count is not None else self.token_counter(item.text)
-            for item in conversation.utterances
-        )
+        total = sum(count_tokens(item, self.token_counter) for item in conversation.utterances)
         if total <= self.budget:
             return ()
         return (

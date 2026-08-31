@@ -5,7 +5,10 @@ windows trustworthy. It is designed for dataset preparation, evaluation pipeline
 chat or threaded-discussion exports.
 
 [![CI](https://github.com/appleweiping/turnscope/actions/workflows/ci.yml/badge.svg)](https://github.com/appleweiping/turnscope/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10--3.13-blue)](https://www.python.org/)
+[![CodeQL](https://github.com/appleweiping/turnscope/actions/workflows/codeql.yml/badge.svg)](https://github.com/appleweiping/turnscope/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/appleweiping/turnscope/badge)](https://scorecard.dev/viewer/?uri=github.com/appleweiping/turnscope)
+[![Release](https://img.shields.io/github/v/release/appleweiping/turnscope?sort=semver)](https://github.com/appleweiping/turnscope/releases)
+[![Python](https://img.shields.io/badge/python-3.10--3.14-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Conversation records often look valid while quietly containing duplicate identifiers, out-of-order timestamps,
@@ -15,12 +18,14 @@ separate, explicit, and dependency-free at runtime.
 
 ## Features
 
-- Strict JSON and JSONL parsing with paths and line numbers in errors.
+- Lazy, strict JSONL parsing with paths, physical line numbers, and duplicate-key checks.
+- Located adapters for OpenAI, Anthropic, and ShareGPT chat records.
 - Frozen core dataclass fields with copied, intentionally mutable metadata mappings.
 - Turn-count, token-budget, elapsed-time, and reply-chain window policies.
+- Output-sensitive built-in policy implementations for long conversations.
 - Composable rules for chronology, IDs, reply integrity, role transitions, future leakage, and token accounting.
 - Stable JSON for automation and compact Markdown for review.
-- A typed Python API and `turnscope build` / `turnscope audit` commands.
+- A typed streaming Python API, two deterministic token counters, and `turnscope build` / `turnscope audit` commands.
 - Deterministic behavior: input order is preserved, ties are not silently reordered, and whole messages are selected.
 
 ```mermaid
@@ -128,6 +133,30 @@ if report.failing():
 Custom rules only need a stable `name` and `check(conversation) -> tuple[Issue, ...]`. Custom tokenizers can be passed
 as any callable from text to a non-negative integer; supplied `token_count` values take precedence during windowing.
 
+Stream a JSONL corpus and each conversation's windows without retaining either complete collection:
+
+```python
+from turnscope import ContextBuilder, TurnWindowPolicy, iter_path
+
+builder = ContextBuilder(TurnWindowPolicy(8))
+for conversation in iter_path("conversations.jsonl"):
+    for window in builder.iter_build(conversation.id, conversation.utterances):
+        consume(window)
+```
+
+Adapt a ShareGPT JSONL export with physical-line error locations:
+
+```python
+from turnscope import iter_adapted_path
+
+for conversation in iter_adapted_path("sharegpt.jsonl", format="sharegpt"):
+    consume(conversation)
+```
+
+`WhitespaceTokenCounter` preserves the default behavior. `Utf8ByteTokenCounter` offers a stable multilingual byte-based
+estimate; neither pretends to match a model tokenizer. See the [Python API](docs/api.md),
+[adapter contracts](docs/adapters.md), and [performance guide](docs/performance.md).
+
 ## CLI reference
 
 ### `turnscope build`
@@ -163,6 +192,9 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 ## Limitations
 
 - The default counter splits on whitespace; it is an estimate, not a model-specific tokenizer.
+- Text-only adapters reject unsupported multimodal and tool-use content blocks rather than silently losing them.
+- Adapter metadata names ignored vendor fields without copying their values; conflicting IDs, timestamps, or content
+  semantics fail conversion.
 - Role-transition rules cannot infer dataset-specific protocols. Configure or replace the rule when consecutive roles
   are intentional.
 - Reply references are scoped to a single conversation.
@@ -170,9 +202,8 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 
 ## Roadmap
 
-- Streaming audit aggregation for datasets larger than memory.
 - Config files for named policy and rule profiles.
-- Optional adapters for common tabular exports.
+- Optional integrations for exact model tokenizers and tabular exports.
 - A documented plugin registry for external rules and tokenizer integrations.
 
 ## Contributing and security

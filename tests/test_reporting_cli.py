@@ -80,7 +80,7 @@ def test_cli_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as error:
         main(["--version"])
     assert error.value.code == 0
-    assert capsys.readouterr().out == "turnscope 0.1.0\n"
+    assert capsys.readouterr().out == "turnscope 0.2.0\n"
 
 
 def test_cli_exit_threshold_and_errors(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
@@ -109,6 +109,11 @@ def test_cli_refuses_to_overwrite_its_input(command: str, tmp_path, capsys) -> N
     assert main([command, str(source), "--output", str(source)]) == 2
     assert source.read_text(encoding="utf-8") == original
     assert "output path must differ" in capsys.readouterr().err
+
+    alias = tmp_path / "hardlink.json"
+    alias.hardlink_to(source)
+    assert main([command, str(source), "--output", str(alias)]) == 2
+    assert source.read_text(encoding="utf-8") == original
 
 
 def test_cli_targets_are_global_across_multiple_conversations(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]

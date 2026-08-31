@@ -27,15 +27,18 @@ class Auditor:
         self.rules = tuple(rules)
 
     def audit(self, conversations: Iterable[Conversation]) -> AuditReport:
-        items = tuple(conversations)
         issues: list[Issue] = []
-        for conversation in items:
+        conversation_count = 0
+        utterance_count = 0
+        for conversation in conversations:
+            conversation_count += 1
+            utterance_count += len(conversation.utterances)
             for rule in self.rules:
                 issues.extend(rule.check(conversation))
         return AuditReport(
             issues=tuple(issues),
-            conversations=len(items),
-            utterances=sum(len(item.utterances) for item in items),
+            conversations=conversation_count,
+            utterances=utterance_count,
         )
 
 

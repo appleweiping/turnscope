@@ -5,18 +5,59 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from .models import Utterance
 
 
+@runtime_checkable
 class TokenCounter(Protocol):
+    """Callable protocol for deterministic text-to-token estimates.
+
+    Implementations must be pure for a given string. ``ContextBuilder`` may
+    memoize calls while constructing many overlapping windows.
+    """
+
     def __call__(self, text: str) -> int: ...
 
 
+@dataclass(frozen=True, slots=True)
+class WhitespaceTokenCounter:
+    """Count non-empty runs separated by Unicode whitespace."""
+
+    def __call__(self, text: str) -> int:
+        return len(text.split())
+
+
+@dataclass(frozen=True, slots=True)
+class Utf8ByteTokenCounter:
+    """Estimate tokens from UTF-8 bytes using a fixed, documented divisor.
+
+    This is not a model tokenizer. It is useful when a stable multilingual
+    approximation is preferable to whitespace splitting.
+    """
+
+    bytes_per_token: int = 4
+
+    def __post_init__(self) -> None:
+        if (
+            isinstance(self.bytes_per_token, bool)
+            or not isinstance(self.bytes_per_token, int)
+            or self.bytes_per_token <= 0
+        ):
+            raise ValueError("bytes_per_token must be a positive integer")
+
+    def __call__(self, text: str) -> int:
+        byte_count = len(text.encode("utf-8"))
+        return (byte_count + self.bytes_per_token - 1) // self.bytes_per_token
+
+
+_WHITESPACE_COUNTER = WhitespaceTokenCounter()
+
+
 def whitespace_tokens(text: str) -> int:
-    """A deterministic dependency-free token estimate."""
-    return len(text.split())
+    """Compatibility function for the default whitespace counter."""
+    return _WHITESPACE_COUNTER(text)
 
 
 class WindowPolicy(Protocol):
@@ -37,7 +78,7 @@ class TurnWindowPolicy:
     turns: int
 
     def __post_init__(self) -> None:
-        if self.turns < 0:
+        if isinstance(self.turns, bool) or not isinstance(self.turns, int) or self.turns < 0:
             raise ValueError("turns must be non-negative")
 
     @property
@@ -59,8 +100,10 @@ class TokenBudgetPolicy:
     include_target: bool = False
 
     def __post_init__(self) -> None:
-        if self.budget < 0:
+        if isinstance(self.budget, bool) or not isinstance(self.budget, int) or self.budget < 0:
             raise ValueError("budget must be non-negative")
+        if not isinstance(self.include_target, bool):
+            raise ValueError("include_target must be a boolean")
 
     @property
     def name(self) -> str:
@@ -91,7 +134,7 @@ class TimeWindowPolicy:
     duration: timedelta
 
     def __post_init__(self) -> None:
-        if self.duration < timedelta(0):
+        if not isinstance(self.duration, timedelta) or self.duration < timedelta(0):
             raise ValueError("duration must be non-negative")
 
     @property
@@ -113,7 +156,11 @@ class ReplyChainPolicy:
     max_depth: int | None = None
 
     def __post_init__(self) -> None:
-        if self.max_depth is not None and self.max_depth < 0:
+        if self.max_depth is not None and (
+            isinstance(self.max_depth, bool)
+            or not isinstance(self.max_depth, int)
+            or self.max_depth < 0
+        ):
             raise ValueError("max_depth must be non-negative")
 
     @property
@@ -141,7 +188,14 @@ class ReplyChainPolicy:
 
 def count_tokens(item: Utterance, counter: TokenCounter) -> int:
     """Return a validated declared or computed token count."""
-    value = item.token_count if item.token_count is not None else counter(item.text)
+    if item.token_count is not None:
+        return item.token_count
+    return count_text_tokens(item.text, counter)
+
+
+def count_text_tokens(text: str, counter: TokenCounter) -> int:
+    """Return one validated counter result without consulting a declared count."""
+    value = counter(text)
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise ValueError("token counter must return a non-negative integer")
     return value
