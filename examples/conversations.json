@@ -1,0 +1,10 @@
+{
+  "id": "support-001",
+  "metadata": {"split": "demo"},
+  "utterances": [
+    {"id": "u1", "role": "user", "text": "My app fails.", "timestamp": "2026-01-01T10:00:00Z", "token_count": 3},
+    {"id": "a1", "role": "assistant", "text": "What error appears?", "timestamp": "2026-01-01T10:00:10Z", "reply_to": "u1", "token_count": 3},
+    {"id": "u2", "role": "user", "text": "It still fails.", "timestamp": "2026-01-01T10:00:20Z", "reply_to": "a1", "token_count": 3},
+    {"id": "a2", "role": "assistant", "text": "Try restarting it.", "timestamp": "2026-01-01T10:00:30Z", "reply_to": "u2", "token_count": 3}
+  ]
+}
