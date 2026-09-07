@@ -31,11 +31,13 @@ from .search import ConversationSearchIndex, SearchHit
 from .transformers import (
     ConversationFeatures,
     CoordinationScore,
+    DiversityProfile,
     SpeakerProfile,
     TfidfState,
     TfidfVectorizer,
     conversation_features,
     linguistic_coordination,
+    linguistic_diversity,
     speaker_profiles,
 )
 
@@ -54,6 +56,7 @@ __all__ = [
     "ConversationTransformer",
     "CoordinationScore",
     "CorpusStore",
+    "DiversityProfile",
     "FeaturePipeline",
     "FeatureRecord",
     "InteractionEdge",
@@ -85,6 +88,7 @@ __all__ = [
     "iter_conversations",
     "iter_path",
     "linguistic_coordination",
+    "linguistic_diversity",
     "reply_forest",
     "speaker_profiles",
 ]

@@ -146,6 +146,55 @@ class SpeakerProfile:
     replies_received: int
 
 
+@dataclass(frozen=True, slots=True)
+class DiversityProfile:
+    """Lexical diversity summary for one speaker-like grouping."""
+
+    speaker: str
+    tokens: int
+    unique_tokens: int
+    type_token_ratio: float
+    lexical_entropy: float
+
+
+def linguistic_diversity(
+    conversation: Conversation, *, field: str | None = None
+) -> tuple[DiversityProfile, ...]:
+    """Compute type-token ratio and Shannon lexical entropy per speaker.
+
+    ``field=None`` groups by utterance role; otherwise a non-empty string
+    metadata field supplies the grouping key. Empty groups cannot occur because
+    every group is created from at least one utterance, while groups with no
+    lexical tokens receive zero ratio and entropy rather than a division error.
+    """
+
+    groups: dict[str, list[str]] = defaultdict(list)
+    for item in conversation.utterances:
+        value = item.role if field is None else item.metadata.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"missing speaker value for utterance {item.id!r}")
+        groups[value].extend(_tokens(item.text))
+    result: list[DiversityProfile] = []
+    for speaker, tokens in sorted(groups.items()):
+        counts = Counter(tokens)
+        total = len(tokens)
+        entropy = (
+            -sum((count / total) * math.log2(count / total) for count in counts.values())
+            if total
+            else 0.0
+        )
+        result.append(
+            DiversityProfile(
+                speaker,
+                total,
+                len(counts),
+                len(counts) / total if total else 0.0,
+                entropy,
+            )
+        )
+    return tuple(result)
+
+
 def speaker_profiles(
     conversation: Conversation, *, field: str | None = None
 ) -> tuple[SpeakerProfile, ...]:

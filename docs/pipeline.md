@@ -26,3 +26,8 @@ each ordered speaker pair. A score is the fraction of adjacent target turns
 that use a category when the source turn used it; `conditioned_turns` and
 `coordinated_turns` make low-support results visible, while `None` means the
 source never supplied evidence for that category.
+
+`linguistic_diversity()` complements coordination with per-speaker lexical
+profiles: token count, unique-token count, type-token ratio, and Shannon entropy.
+It accepts the same optional metadata grouping field and returns zero-valued
+metrics for an utterance group whose text contains no tokens.

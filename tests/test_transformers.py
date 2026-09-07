@@ -8,6 +8,7 @@ from turnscope import (
     Utterance,
     conversation_features,
     linguistic_coordination,
+    linguistic_diversity,
     speaker_profiles,
 )
 
@@ -85,3 +86,15 @@ def test_linguistic_coordination_is_directional_and_retains_no_evidence() -> Non
     assert by_key[("bob", "alice", "cognition")].score is None
     with pytest.raises(ValueError, match="non-empty"):
         linguistic_coordination(conversation, {})
+
+
+def test_linguistic_diversity_reports_ratio_and_entropy() -> None:
+    conversation = convo("div", ["same same word", "other word"], ["alice", "bob"])
+    profiles = linguistic_diversity(conversation)
+    assert profiles[0].speaker == "alice"
+    assert profiles[0].tokens == 3
+    assert profiles[0].unique_tokens == 2
+    assert profiles[0].type_token_ratio == pytest.approx(2 / 3)
+    assert profiles[0].lexical_entropy > 0
+    with pytest.raises(ValueError, match="speaker"):
+        linguistic_diversity(conversation, field="missing")
