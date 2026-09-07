@@ -4,6 +4,9 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add strict named JSON profiles for reusable context policies, token counters,
+  and audit budgets through `build --config` and `audit --config`.
+
 - Add atomic, resumable `corpus export` JSONL output and paged
   `CorpusStore.iter_conversations`.
 - Add per-speaker network centrality plus density, reciprocity, and weak-component

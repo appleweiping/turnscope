@@ -23,9 +23,12 @@ from .policies import (
     ReplyChainPolicy,
     TimeWindowPolicy,
     TokenBudgetPolicy,
+    TokenCounter,
     TurnWindowPolicy,
     WindowPolicy,
+    whitespace_tokens,
 )
+from .profiles import get_profile
 from .redaction import RedactionPolicy, redact_conversations
 from .reporting import report_json, report_markdown, windows_json
 from .search import ConversationSearchIndex
@@ -42,6 +45,8 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--policy", choices=("turn", "token", "time", "reply-chain"), default="turn")
     build.add_argument("--value", type=int, help="turns, tokens, seconds, or reply depth")
     build.add_argument("--target", action="append", help="only build the specified target ID")
+    build.add_argument("--config", type=Path, help="JSON file containing named profiles")
+    build.add_argument("--profile", default="default", help="profile name in --config")
 
     audit = subcommands.add_parser("audit", help="audit conversation reliability")
     audit.add_argument("input", type=Path)
@@ -49,6 +54,8 @@ def _parser() -> argparse.ArgumentParser:
     audit.add_argument("--format", choices=("json", "markdown"), default="markdown")
     audit.add_argument("--token-budget", type=int)
     audit.add_argument("--fail-on", choices=("info", "warning", "error"), default="error")
+    audit.add_argument("--config", type=Path, help="JSON file containing named profiles")
+    audit.add_argument("--profile", default="default", help="profile name in --config")
     corpus = subcommands.add_parser("corpus", help="store and query a disk-backed corpus")
     actions = corpus.add_subparsers(dest="action", required=True)
     ingest = actions.add_parser("import", help="atomically import JSON or JSONL conversations")
@@ -141,14 +148,18 @@ def _paths_collide(input_path: Path, output_path: Path | None) -> bool:
 
 
 def _build_windows(
-    conversations: list[Conversation], policy: WindowPolicy, target_ids: Sequence[str] | None
+    conversations: list[Conversation],
+    policy: WindowPolicy,
+    target_ids: Sequence[str] | None,
+    token_counter: TokenCounter | None = None,
 ) -> tuple[ContextWindow, ...]:
     """Build windows, interpreting CLI target IDs across the complete dataset."""
+    counter = whitespace_tokens if token_counter is None else token_counter
     if target_ids is None:
         return tuple(
             window
             for conversation in conversations
-            for window in ContextBuilder(policy).build(conversation)
+            for window in ContextBuilder(policy, counter).build(conversation)
         )
 
     requested = set(target_ids)
@@ -171,7 +182,9 @@ def _build_windows(
     for conversation in conversations:
         local_ids = requested & {item.id for item in conversation.utterances}
         if local_ids:
-            windows.extend(ContextBuilder(policy).build(conversation, target_ids=local_ids))
+            windows.extend(
+                ContextBuilder(policy, counter).build(conversation, target_ids=local_ids)
+            )
     return tuple(windows)
 
 
@@ -247,11 +260,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             _write(rendered, args.output)
             return 0
         if args.command == "build":
-            policy = _policy(args.policy, args.value)
-            windows = _build_windows(conversations, policy, args.target)
+            profile = get_profile(args.config, args.profile) if args.config else None
+            if profile is not None and (args.policy != "turn" or args.value is not None):
+                raise ValueError("--config cannot be combined with --policy or --value")
+            policy = profile.policy if profile is not None else _policy(args.policy, args.value)
+            windows = _build_windows(
+                conversations,
+                policy,
+                args.target,
+                profile.token_counter if profile is not None else None,
+            )
             _write(windows_json(windows), args.output)
             return 0
-        report = default_auditor(token_budget=args.token_budget).audit(conversations)
+        profile = get_profile(args.config, args.profile) if args.config else None
+        if profile is not None and args.token_budget is not None:
+            raise ValueError("--config cannot be combined with --token-budget")
+        report = default_auditor(
+            token_budget=(profile.token_budget if profile is not None else args.token_budget),
+            token_counter=(profile.token_counter if profile is not None else None),
+        ).audit(conversations)
         rendered = report_json(report) if args.format == "json" else report_markdown(report)
         _write(rendered, args.output)
         return 1 if report.failing(Severity.parse(args.fail_on)) else 0

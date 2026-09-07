@@ -39,6 +39,7 @@ from .policies import (
     Utf8ByteTokenCounter,
     WhitespaceTokenCounter,
 )
+from .profiles import Profile, get_profile, load_profiles
 from .redaction import RedactionPolicy, RedactionReport, redact_conversations, redact_stream
 from .search import ConversationSearchIndex, SearchHit
 from .transformers import (
@@ -82,6 +83,7 @@ __all__ = [
     "NetworkCentrality",
     "NetworkEdge",
     "NetworkMetrics",
+    "Profile",
     "RedactionPolicy",
     "RedactionReport",
     "ReplyChainPolicy",
@@ -106,6 +108,7 @@ __all__ = [
     "conversation_features",
     "corpus_speaker_profiles",
     "default_auditor",
+    "get_profile",
     "interaction_edges",
     "interaction_network",
     "iter_adapted_conversations",
@@ -115,6 +118,7 @@ __all__ = [
     "iter_path",
     "linguistic_coordination",
     "linguistic_diversity",
+    "load_profiles",
     "redact_conversations",
     "redact_stream",
     "reply_forest",

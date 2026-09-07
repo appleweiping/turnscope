@@ -90,6 +90,11 @@ Build two-turn histories for every target:
 turnscope build examples/conversations.json --policy turn --value 2 --output windows.json
 ```
 
+For repeatable teams, put policy and audit settings in a named profile and
+invoke `turnscope build ... --config profiles.json --profile support`. See
+[named profiles](docs/profiles.md) for the strict format and token-counter
+options.
+
 Build only the reply ancestry for target `a2`:
 
 ```bash
@@ -213,7 +218,6 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 
 ## Roadmap
 
-- Config files for named policy and rule profiles.
 - Optional integrations for exact model tokenizers and tabular exports.
 - A documented plugin registry for external rules and tokenizer integrations.
 

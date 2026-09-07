@@ -76,6 +76,54 @@ def test_cli_build_and_audit(tmp_path, capsys) -> None:  # type: ignore[no-untyp
     assert json.loads(capsys.readouterr().out)["summary"]["issues"] == 0
 
 
+def test_cli_uses_named_profile_for_build_and_audit(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    source = tmp_path / "input.json"
+    source.write_text(
+        json.dumps(
+            {
+                "id": "demo",
+                "utterances": [
+                    {
+                        "id": "1",
+                        "role": "user",
+                        "text": "one two",
+                        "timestamp": "2026-01-01T00:00:00Z",
+                    },
+                    {
+                        "id": "2",
+                        "role": "assistant",
+                        "text": "three",
+                        "timestamp": "2026-01-01T00:00:01Z",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    config = tmp_path / "profiles.json"
+    config.write_text(
+        '{"profiles":{"tiny":{"policy":{"kind":"turn","value":1},"audit":{"token_budget":8}}}}',
+        encoding="utf-8",
+    )
+    assert main(["build", str(source), "--config", str(config), "--profile", "tiny"]) == 0
+    assert len(json.loads(capsys.readouterr().out)[1]["context"]) == 1
+    assert (
+        main(
+            [
+                "audit",
+                str(source),
+                "--config",
+                str(config),
+                "--profile",
+                "tiny",
+                "--format",
+                "json",
+            ]
+        )
+        == 0
+    )
+
+
 def test_cli_search(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
     source = tmp_path / "input.json"
     source.write_text(

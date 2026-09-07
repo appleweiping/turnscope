@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 
 from .models import AuditReport, Conversation, Issue
+from .policies import TokenCounter, whitespace_tokens
 from .rules import (
     AuditRule,
     ChronologyRule,
@@ -42,16 +43,19 @@ class Auditor:
         )
 
 
-def default_auditor(*, token_budget: int | None = None) -> Auditor:
+def default_auditor(
+    *, token_budget: int | None = None, token_counter: TokenCounter | None = None
+) -> Auditor:
     """Return the stable default rule set, optionally adding a total-token budget."""
+    counter = whitespace_tokens if token_counter is None else token_counter
     rules: list[AuditRule] = [
         ChronologyRule(),
         DuplicateIdRule(),
         OrphanReplyRule(),
         FutureReplyRule(),
         RoleTransitionRule(),
-        TokenCountRule(),
+        TokenCountRule(token_counter=counter),
     ]
     if token_budget is not None:
-        rules.append(ConversationBudgetRule(token_budget))
+        rules.append(ConversationBudgetRule(token_budget, token_counter=counter))
     return Auditor(rules)
