@@ -221,6 +221,9 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 - Optional integrations for exact model tokenizers and tabular exports.
 - A documented plugin registry for external rules and tokenizer integrations.
 
+Named JSON profiles are available today through the build and audit commands;
+see [profiles](docs/profiles.md).
+
 ## Contributing and security
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the verification workflow. Report vulnerabilities using the private process
