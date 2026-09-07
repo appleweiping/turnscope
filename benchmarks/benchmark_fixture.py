@@ -17,6 +17,7 @@ from turnscope import (
     FeaturePipeline,
     TfidfVectorizer,
     conversation_features,
+    linguistic_diversity,
 )
 from turnscope.io import load_path
 
@@ -40,6 +41,7 @@ def main() -> None:
         )
     )
     features = pipeline.fit_transform(conversations)
+    diversity = tuple(linguistic_diversity(item) for item in conversations)
     elapsed = time.perf_counter() - started
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
@@ -53,6 +55,7 @@ def main() -> None:
         "indexed_documents": index.documents,
         "search_hits": len(hits),
         "feature_records": len(features),
+        "diversity_profiles": sum(len(item) for item in diversity),
         "elapsed_seconds": elapsed,
         "peak_python_bytes": peak,
         "python": sys.version.split()[0],
