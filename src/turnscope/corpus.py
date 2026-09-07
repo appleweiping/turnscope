@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from types import TracebackType
 
@@ -134,6 +134,29 @@ class CorpusStore:
                 "SELECT id FROM conversations WHERE id > ? ORDER BY id LIMIT ?", (after, limit)
             )
         return tuple(row[0] for row in rows)
+
+    def iter_conversations(
+        self, *, after: str | None = None, limit: int | None = None
+    ) -> Iterator[Conversation]:
+        """Yield detached conversations in ID order using an optional keyset page."""
+
+        self._ensure_open()
+        if limit is not None and (
+            isinstance(limit, bool) or not isinstance(limit, int) or limit < 1
+        ):
+            raise ValueError("limit must be a positive integer or None")
+        query = "SELECT body FROM conversations"
+        parameters: tuple[object, ...] = ()
+        if after is not None:
+            query += " WHERE id > ?"
+            parameters = (after,)
+        query += " ORDER BY id"
+        if limit is not None:
+            query += " LIMIT ?"
+            parameters += (limit,)
+        rows = self._connection.execute(query, parameters)
+        for row in rows:
+            yield conversation_from_dict(parse_json_value(row[0]))
 
     def delete(self, conversation_ids: Iterable[str]) -> int:
         """Atomically delete IDs, ignoring missing IDs; return records removed."""

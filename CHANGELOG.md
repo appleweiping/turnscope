@@ -4,6 +4,10 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add atomic, resumable `corpus export` JSONL output and paged
+  `CorpusStore.iter_conversations`.
+- Add per-speaker network centrality plus density, reciprocity, and weak-component
+  diagnostics to interaction-network reports.
 - Add deterministic conversation redaction for common emails, phones, API keys,
   and opt-in URLs, with a redacted-count report and `redact` CLI.
 

@@ -135,6 +135,25 @@ def test_cli_network_reports_cross_conversation_edges(tmp_path, capsys) -> None:
     assert payload["speakers"][0]["speaker"] == "alice"
 
 
+def test_cli_corpus_export_round_trips_and_resumes(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    source = tmp_path / "conversations.jsonl"
+    source.write_text(
+        '{"id":"b","utterances":[]}\n{"id":"a","utterances":[]}\n',
+        encoding="utf-8",
+    )
+    database = tmp_path / "corpus.db"
+    assert main(["corpus", "import", str(database), str(source)]) == 0
+    capsys.readouterr()
+    exported = tmp_path / "exported.jsonl"
+    assert main(["corpus", "export", str(database), str(exported), "--limit", "1"]) == 0
+    assert json.loads(capsys.readouterr().out)["exported"] == 1
+    assert json.loads(exported.read_text(encoding="utf-8").splitlines()[0])["id"] == "a"
+    resumed = tmp_path / "resumed.jsonl"
+    assert main(["corpus", "export", str(database), str(resumed), "--after", "a"]) == 0
+    assert json.loads(capsys.readouterr().out)["exported"] == 1
+    assert json.loads(resumed.read_text(encoding="utf-8").splitlines()[0])["id"] == "b"
+
+
 def test_cli_classify_fits_persists_and_emits_probabilities(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
     train = tmp_path / "train.jsonl"
     predict = tmp_path / "predict.json"

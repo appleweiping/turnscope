@@ -30,12 +30,17 @@ turnscope corpus stats conversations.db
 turnscope corpus list conversations.db --limit 100
 turnscope corpus list conversations.db --limit 100 --after previous-last-id
 turnscope corpus get conversations.db conversation-id
+turnscope corpus export conversations.db exported.jsonl --limit 100
+turnscope corpus export conversations.db resumed.jsonl --after previous-last-id
 ```
 
-All results are JSON on standard output. Errors return exit status 2. Query
-commands require an existing database. Import refuses to use its input file as
-the database, including filesystem aliases. No delete command is provided;
-explicit `corpus.delete(ids)` is available through the Python API.
+All results are JSON on standard output except the exported JSONL records;
+export prints a final count object. Errors return exit status 2. Query commands
+require an existing database. Export uses keyset ID ordering and an atomic
+temporary file, so a failed export does not replace an existing destination.
+Import refuses to use its input file as the database, including filesystem
+aliases. No delete command is provided; explicit `corpus.delete(ids)` is
+available through the Python API.
 
 ## Consistency and limits
 

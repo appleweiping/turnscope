@@ -6,6 +6,7 @@ import argparse
 import json
 import sqlite3
 import sys
+import tempfile
 from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -63,6 +64,11 @@ def _parser() -> argparse.ArgumentParser:
     get = actions.add_parser("get", help="print one conversation as JSON")
     get.add_argument("database", type=Path)
     get.add_argument("id")
+    export = actions.add_parser("export", help="export stored conversations as deterministic JSONL")
+    export.add_argument("database", type=Path)
+    export.add_argument("output", type=Path)
+    export.add_argument("--after", help="resume after this conversation ID")
+    export.add_argument("--limit", type=int, help="export at most this many conversations")
     search = subcommands.add_parser("search", help="lexically search indexed utterances")
     search.add_argument("input", type=Path)
     search.add_argument("query")
@@ -262,6 +268,8 @@ def _corpus_command(args: argparse.Namespace) -> int:
             raise ValueError("input must be an existing file")
     elif not args.database.is_file():
         raise ValueError("database must be an existing file")
+    if args.action == "export" and _paths_collide(args.database, args.output):
+        raise ValueError("export output must differ from the database")
     with CorpusStore(args.database) as store:
         if args.action == "import":
             result: object = {"imported": store.put(iter_path(args.input), replace=args.replace)}
@@ -270,8 +278,41 @@ def _corpus_command(args: argparse.Namespace) -> int:
             result = {"conversations": conversations, "utterances": utterances}
         elif args.action == "list":
             result = store.ids(after=args.after, limit=args.limit)
-        else:
+        elif args.action == "get":
             result = conversation_to_dict(store.get(args.id))
+        else:
+            temporary_name: str | None = None
+            exported = 0
+            try:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    encoding="utf-8",
+                    dir=args.output.parent,
+                    prefix=".turnscope-export-",
+                    delete=False,
+                ) as stream:
+                    temporary_name = stream.name
+                    for conversation in store.iter_conversations(
+                        after=args.after, limit=args.limit
+                    ):
+                        stream.write(
+                            json.dumps(
+                                conversation_to_dict(conversation),
+                                ensure_ascii=True,
+                                allow_nan=False,
+                                separators=(",", ":"),
+                            )
+                            + "\n"
+                        )
+                        exported += 1
+                Path(temporary_name).replace(args.output)
+            finally:
+                if temporary_name is not None:
+                    temporary = Path(temporary_name)
+                    if temporary.exists():
+                        temporary.unlink()
+            result = {"exported": exported, "output": str(args.output)}
         print(json.dumps(result, ensure_ascii=True, allow_nan=False))
     return 0
 

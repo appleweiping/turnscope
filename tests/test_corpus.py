@@ -20,6 +20,15 @@ def test_persistence(tmp_path: Path, conversation: Conversation) -> None:
         assert store.ids() == ("demo",)
 
 
+def test_iter_conversations_supports_keyset_pages_and_limits(conversation: Conversation) -> None:
+    with CorpusStore(":memory:") as store:
+        store.put([Conversation("a", []), conversation, Conversation("z", [])])
+        assert tuple(item.id for item in store.iter_conversations(limit=2)) == ("a", "demo")
+        assert tuple(item.id for item in store.iter_conversations(after="demo")) == ("z",)
+        with pytest.raises(ValueError, match="limit"):
+            tuple(store.iter_conversations(limit=0))
+
+
 def test_failed_batch_restores_replacement(conversation: Conversation) -> None:
     with CorpusStore(":memory:") as store:
         store.put([conversation])
