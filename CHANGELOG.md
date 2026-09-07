@@ -8,6 +8,7 @@ All notable changes follow the principles of Keep a Changelog.
 
 - Atomic SQLite corpus imports, replacement, keyset pagination, and corpus CLI queries.
 - Iterative reply-forest analysis and explicit role/speaker interaction aggregation.
+- Fit/transform TF-IDF vectors and deterministic conversation/speaker feature aggregates.
 
 ## [0.2.0] - 2026-08-31
 

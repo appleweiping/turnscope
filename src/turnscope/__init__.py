@@ -25,6 +25,14 @@ from .policies import (
     Utf8ByteTokenCounter,
     WhitespaceTokenCounter,
 )
+from .transformers import (
+    ConversationFeatures,
+    SpeakerProfile,
+    TfidfState,
+    TfidfVectorizer,
+    conversation_features,
+    speaker_profiles,
+)
 
 __all__ = [
     "AuditReport",
@@ -33,12 +41,16 @@ __all__ = [
     "ContextBuilder",
     "ContextWindow",
     "Conversation",
+    "ConversationFeatures",
     "CorpusStore",
     "InteractionEdge",
     "Issue",
     "ReplyChainPolicy",
     "ReplyForest",
     "Severity",
+    "SpeakerProfile",
+    "TfidfState",
+    "TfidfVectorizer",
     "TimeWindowPolicy",
     "TokenBudgetPolicy",
     "TokenCounter",
@@ -50,6 +62,7 @@ __all__ = [
     "adapt_conversation",
     "adapt_openai",
     "adapt_sharegpt",
+    "conversation_features",
     "default_auditor",
     "interaction_edges",
     "iter_adapted_conversations",
@@ -58,6 +71,7 @@ __all__ = [
     "iter_conversations",
     "iter_path",
     "reply_forest",
+    "speaker_profiles",
 ]
 
 __version__ = "0.2.0"

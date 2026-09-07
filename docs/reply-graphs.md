@@ -30,3 +30,12 @@ and counted separately. Timestamp correctness is a separate auditor concern.
 
 These graph primitives do not provide fitted models, social-science validity,
 or evidence that a role-level network identifies real participants.
+
+## Fit/transform features
+
+`TfidfVectorizer` fits vocabulary and IDF on a training sequence, then returns
+sparse per-utterance vectors. It counts document frequency per conversation,
+uses deterministic frequency/name ordering, and does not learn from a later test
+conversation unless the caller explicitly fits on it. `conversation_features`
+and `speaker_profiles` provide lightweight count aggregates for indexing and
+quality reports; they are not sentiment or identity models.
