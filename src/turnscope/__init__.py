@@ -37,6 +37,7 @@ from .policies import (
     Utf8ByteTokenCounter,
     WhitespaceTokenCounter,
 )
+from .redaction import RedactionPolicy, RedactionReport, redact_conversations, redact_stream
 from .search import ConversationSearchIndex, SearchHit
 from .transformers import (
     ConversationFeatures,
@@ -77,6 +78,8 @@ __all__ = [
     "InteractionNetworkAccumulator",
     "Issue",
     "NetworkEdge",
+    "RedactionPolicy",
+    "RedactionReport",
     "ReplyChainPolicy",
     "ReplyForest",
     "SearchHit",
@@ -108,6 +111,8 @@ __all__ = [
     "iter_path",
     "linguistic_coordination",
     "linguistic_diversity",
+    "redact_conversations",
+    "redact_stream",
     "reply_forest",
     "speaker_profiles",
 ]

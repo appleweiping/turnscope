@@ -4,6 +4,9 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add deterministic conversation redaction for common emails, phones, API keys,
+  and opt-in URLs, with a redacted-count report and `redact` CLI.
+
 ### Added
 
 - Add directional adjacent-turn linguistic coordination scores with evidence counts

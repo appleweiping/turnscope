@@ -25,6 +25,7 @@ from .policies import (
     TurnWindowPolicy,
     WindowPolicy,
 )
+from .redaction import RedactionPolicy, redact_conversations
 from .reporting import report_json, report_markdown, windows_json
 from .search import ConversationSearchIndex
 from .transformers import corpus_speaker_profiles
@@ -91,6 +92,17 @@ def _parser() -> argparse.ArgumentParser:
     classify.add_argument("--alpha", type=float, default=1.0)
     classify.add_argument("--max-features", type=int)
     classify.add_argument("--output", "-o", type=Path)
+    redact = subcommands.add_parser(
+        "redact", help="replace common PII and API-key patterns in conversation text"
+    )
+    redact.add_argument("input", type=Path)
+    redact.add_argument("--output", "-o", type=Path, required=True)
+    redact.add_argument("--report", type=Path)
+    redact.add_argument("--format", choices=("json", "jsonl"), default=None)
+    redact.add_argument("--no-email", action="store_true")
+    redact.add_argument("--no-phone", action="store_true")
+    redact.add_argument("--no-api-key", action="store_true")
+    redact.add_argument("--url", action="store_true", help="also redact HTTP(S) URLs")
     return parser
 
 
@@ -164,6 +176,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _corpus_command(args)
         if args.command == "classify":
             return _classify_command(args)
+        if args.command == "redact":
+            return _redact_command(args)
         if args.command in {"build", "audit", "speaker-profile", "network"} and _paths_collide(
             args.input, args.output
         ):
@@ -309,6 +323,33 @@ def _classify_command(args: argparse.Namespace) -> int:
         + "\n",
         args.output,
     )
+    return 0
+
+
+def _redact_command(args: argparse.Namespace) -> int:
+    if _paths_collide(args.input, args.output) or (
+        args.report is not None and _paths_collide(args.input, args.report)
+    ):
+        raise ValueError("redaction output paths must differ from the input path")
+    selected_format = args.format or ("jsonl" if args.input.suffix.lower() == ".jsonl" else "json")
+    conversations, report = redact_conversations(
+        iter_path(args.input),
+        policy=RedactionPolicy(
+            email=not args.no_email,
+            phone=not args.no_phone,
+            api_key=not args.no_api_key,
+            url=args.url,
+        ),
+    )
+    with args.output.open("w", encoding="utf-8") as stream:
+        from .io import dump_conversations
+
+        dump_conversations(conversations, stream, format=selected_format)
+    rendered = json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n"
+    if args.report is None:
+        sys.stdout.write(rendered)
+    else:
+        args.report.write_text(rendered, encoding="utf-8")
     return 0
 
 

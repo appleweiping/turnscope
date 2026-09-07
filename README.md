@@ -26,6 +26,7 @@ separate, explicit, and dependency-free at runtime.
 - Composable rules for chronology, IDs, reply integrity, role transitions, future leakage, and token accounting.
 - Stable JSON for automation and compact Markdown for review.
 - A typed streaming Python API, two deterministic token counters, and `turnscope build` / `turnscope audit` commands.
+- A conservative pattern-based [redaction workflow](docs/redaction.md) for sanitized exports.
 - Deterministic behavior: input order is preserved, ties are not silently reordered, and whole messages are selected.
 
 ```mermaid
