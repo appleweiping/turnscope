@@ -11,6 +11,7 @@ All notable changes follow the principles of Keep a Changelog.
 - Fit/transform TF-IDF vectors and deterministic conversation/speaker feature aggregates.
 - Deterministic BM25-style conversation search with filtering and vocabulary diagnostics.
 - Versioned, deterministic search-index snapshots with digest-authenticated save/load support.
+- Ordered fit/transform feature pipelines for composing TF-IDF and conversation transformers.
 
 ## [0.2.0] - 2026-08-31
 

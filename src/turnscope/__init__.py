@@ -16,6 +16,7 @@ from .corpus import CorpusStore
 from .graph import InteractionEdge, ReplyForest, interaction_edges, reply_forest
 from .io import iter_conversations, iter_path
 from .models import AuditReport, ContextWindow, Conversation, Issue, Severity, Utterance
+from .pipeline import CallableTransformer, ConversationTransformer, FeaturePipeline, FeatureRecord
 from .policies import (
     ReplyChainPolicy,
     TimeWindowPolicy,
@@ -38,13 +39,17 @@ from .transformers import (
 __all__ = [
     "AuditReport",
     "Auditor",
+    "CallableTransformer",
     "ChatFormat",
     "ContextBuilder",
     "ContextWindow",
     "Conversation",
     "ConversationFeatures",
     "ConversationSearchIndex",
+    "ConversationTransformer",
     "CorpusStore",
+    "FeaturePipeline",
+    "FeatureRecord",
     "InteractionEdge",
     "Issue",
     "ReplyChainPolicy",
