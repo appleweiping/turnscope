@@ -134,12 +134,116 @@ class SpeakerSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class NetworkCentrality:
+    """Deterministic degree centrality counts for one network speaker."""
+
+    speaker: str
+    in_degree: int
+    out_degree: int
+    incoming_replies: int
+    outgoing_replies: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "speaker": self.speaker,
+            "in_degree": self.in_degree,
+            "out_degree": self.out_degree,
+            "incoming_replies": self.incoming_replies,
+            "outgoing_replies": self.outgoing_replies,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class NetworkMetrics:
+    """Corpus-level graph diagnostics derived from the directed edge set."""
+
+    node_count: int
+    edge_count: int
+    reply_count: int
+    density: float
+    reciprocal_pairs: int
+    reciprocity: float
+    weak_components: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "node_count": self.node_count,
+            "edge_count": self.edge_count,
+            "reply_count": self.reply_count,
+            "density": self.density,
+            "reciprocal_pairs": self.reciprocal_pairs,
+            "reciprocity": self.reciprocity,
+            "weak_components": self.weak_components,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class InteractionNetwork:
     """Deterministic corpus-level network with node and edge summaries."""
 
     conversations: int
     speakers: Mapping[str, SpeakerSummary]
     edges: tuple[NetworkEdge, ...]
+
+    def centrality(self) -> tuple[NetworkCentrality, ...]:
+        """Return weighted in/out degree summaries sorted by speaker."""
+
+        incoming: dict[str, set[str]] = {speaker: set() for speaker in self.speakers}
+        outgoing: dict[str, set[str]] = {speaker: set() for speaker in self.speakers}
+        incoming_replies: Counter[str] = Counter()
+        outgoing_replies: Counter[str] = Counter()
+        for edge in self.edges:
+            incoming.setdefault(edge.recipient, set()).add(edge.sender)
+            outgoing.setdefault(edge.sender, set()).add(edge.recipient)
+            incoming_replies[edge.recipient] += edge.replies
+            outgoing_replies[edge.sender] += edge.replies
+        return tuple(
+            NetworkCentrality(
+                speaker,
+                len(incoming.get(speaker, set())),
+                len(outgoing.get(speaker, set())),
+                incoming_replies[speaker],
+                outgoing_replies[speaker],
+            )
+            for speaker in sorted(set(self.speakers) | set(incoming) | set(outgoing))
+        )
+
+    def metrics(self) -> NetworkMetrics:
+        """Return density, reciprocity, and weak-connectivity diagnostics."""
+
+        speakers = set(self.speakers)
+        pairs = {(edge.sender, edge.recipient) for edge in self.edges}
+        speakers.update(sender for sender, _ in pairs)
+        speakers.update(recipient for _, recipient in pairs)
+        non_self = {(sender, recipient) for sender, recipient in pairs if sender != recipient}
+        possible = len(speakers) * max(0, len(speakers) - 1)
+        reciprocal_pairs = sum(
+            1
+            for sender, recipient in non_self
+            if sender < recipient and (recipient, sender) in non_self
+        )
+        parent = {speaker: speaker for speaker in speakers}
+
+        def find(value: str) -> str:
+            while parent[value] != value:
+                parent[value] = parent[parent[value]]
+                value = parent[value]
+            return value
+
+        for sender, recipient in pairs:
+            left, right = find(sender), find(recipient)
+            if left != right:
+                parent[right] = left
+        components = len({find(speaker) for speaker in speakers}) if speakers else 0
+        return NetworkMetrics(
+            node_count=len(speakers),
+            edge_count=len(pairs),
+            reply_count=sum(edge.replies for edge in self.edges),
+            density=(len(non_self) / possible if possible else 0.0),
+            reciprocal_pairs=reciprocal_pairs,
+            reciprocity=(2 * reciprocal_pairs / len(non_self) if non_self else 0.0),
+            weak_components=components,
+        )
 
     def to_dict(self) -> dict[str, object]:
         """Return a stable JSON-compatible network report."""
@@ -167,6 +271,8 @@ class InteractionNetwork:
                 }
                 for edge in self.edges
             ],
+            "centrality": [summary.to_dict() for summary in self.centrality()],
+            "metrics": self.metrics().to_dict(),
         }
 
 

@@ -127,6 +127,14 @@ def test_interaction_network_aggregates_conversations_deterministically() -> Non
     ]
     assert report.edges[1].mean_latency_seconds == 15.0
     assert report.to_dict()["speakers"][0]["speaker"] == "alice"
+    assert report.centrality()[0].outgoing_replies == 1
+    assert report.centrality()[1].incoming_replies == 1
+    metrics = report.metrics()
+    assert metrics.density == 1.0
+    assert metrics.reciprocal_pairs == 1
+    assert metrics.reciprocity == 1.0
+    assert metrics.weak_components == 1
+    assert report.to_dict()["metrics"]["reply_count"] == 3
 
 
 def test_interaction_network_accepts_generators_and_validates_values() -> None:

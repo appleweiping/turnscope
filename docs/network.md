@@ -23,3 +23,10 @@ Roles are used as endpoints when `speaker_field` is omitted. A metadata field
 must contain a non-empty string for every utterance when it is selected. The
 report is sorted by speaker and `(sender, recipient)` edge, so it can be
 committed as a reproducible corpus-analysis artifact.
+
+Every report also includes graph diagnostics under `metrics` and per-speaker
+weighted degree summaries under `centrality`. `density` counts observed
+non-self directed pairs against all possible directed pairs, `reciprocity`
+counts mutual directed pairs, and `weak_components` treats directed edges as
+undirected for connectivity. Reply totals remain weighted by the number of
+messages, while degree counts count distinct neighbors.
