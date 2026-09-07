@@ -30,6 +30,7 @@ from .graph import (
 from .io import iter_conversations, iter_path
 from .models import AuditReport, ContextWindow, Conversation, Issue, Severity, Utterance
 from .pipeline import CallableTransformer, ConversationTransformer, FeaturePipeline, FeatureRecord
+from .plugins import PluginInfo, list_plugins, load_rule, load_tokenizer
 from .policies import (
     ReplyChainPolicy,
     TimeWindowPolicy,
@@ -83,6 +84,7 @@ __all__ = [
     "NetworkCentrality",
     "NetworkEdge",
     "NetworkMetrics",
+    "PluginInfo",
     "Profile",
     "RedactionPolicy",
     "RedactionReport",
@@ -118,7 +120,10 @@ __all__ = [
     "iter_path",
     "linguistic_coordination",
     "linguistic_diversity",
+    "list_plugins",
     "load_profiles",
+    "load_rule",
+    "load_tokenizer",
     "redact_conversations",
     "redact_stream",
     "reply_forest",

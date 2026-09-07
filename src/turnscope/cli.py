@@ -19,6 +19,7 @@ from .corpus import CorpusStore
 from .graph import interaction_network
 from .io import DataFormatError, conversation_to_dict, iter_path, load_path
 from .models import ContextWindow, Conversation, Severity
+from .plugins import list_plugins, load_rule, load_tokenizer
 from .policies import (
     ReplyChainPolicy,
     TimeWindowPolicy,
@@ -47,6 +48,7 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--target", action="append", help="only build the specified target ID")
     build.add_argument("--config", type=Path, help="JSON file containing named profiles")
     build.add_argument("--profile", default="default", help="profile name in --config")
+    build.add_argument("--tokenizer-plugin", help="installed entry-point tokenizer name")
 
     audit = subcommands.add_parser("audit", help="audit conversation reliability")
     audit.add_argument("input", type=Path)
@@ -56,6 +58,15 @@ def _parser() -> argparse.ArgumentParser:
     audit.add_argument("--fail-on", choices=("info", "warning", "error"), default="error")
     audit.add_argument("--config", type=Path, help="JSON file containing named profiles")
     audit.add_argument("--profile", default="default", help="profile name in --config")
+    audit.add_argument("--tokenizer-plugin", help="installed entry-point tokenizer name")
+    audit.add_argument(
+        "--rule-plugin",
+        action="append",
+        default=[],
+        help="installed audit-rule entry point (repeatable)",
+    )
+    plugins = subcommands.add_parser("plugins", help="list installed extension entry points")
+    plugins.add_argument("--kind", choices=("rules", "tokenizers"))
     corpus = subcommands.add_parser("corpus", help="store and query a disk-backed corpus")
     actions = corpus.add_subparsers(dest="action", required=True)
     ingest = actions.add_parser("import", help="atomically import JSON or JSONL conversations")
@@ -197,6 +208,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _classify_command(args)
         if args.command == "redact":
             return _redact_command(args)
+        if args.command == "plugins":
+            entries = list_plugins(args.kind) if args.kind is not None else list_plugins()
+            print(
+                json.dumps(
+                    [
+                        {"name": item.name, "kind": item.kind, "value": item.value}
+                        for item in entries
+                    ],
+                    ensure_ascii=True,
+                    sort_keys=True,
+                )
+            )
+            return 0
         if args.command in {"build", "audit", "speaker-profile", "network"} and _paths_collide(
             args.input, args.output
         ):
@@ -263,21 +287,37 @@ def main(argv: Sequence[str] | None = None) -> int:
             profile = get_profile(args.config, args.profile) if args.config else None
             if profile is not None and (args.policy != "turn" or args.value is not None):
                 raise ValueError("--config cannot be combined with --policy or --value")
+            if profile is not None and args.tokenizer_plugin is not None:
+                raise ValueError("--config cannot be combined with --tokenizer-plugin")
             policy = profile.policy if profile is not None else _policy(args.policy, args.value)
+            counter = (
+                load_tokenizer(args.tokenizer_plugin)
+                if args.tokenizer_plugin is not None
+                else (profile.token_counter if profile is not None else None)
+            )
             windows = _build_windows(
                 conversations,
                 policy,
                 args.target,
-                profile.token_counter if profile is not None else None,
+                counter,
             )
             _write(windows_json(windows), args.output)
             return 0
         profile = get_profile(args.config, args.profile) if args.config else None
         if profile is not None and args.token_budget is not None:
             raise ValueError("--config cannot be combined with --token-budget")
+        if profile is not None and (args.tokenizer_plugin is not None or args.rule_plugin):
+            raise ValueError("--config cannot be combined with plugin options")
+        counter = (
+            load_tokenizer(args.tokenizer_plugin)
+            if args.tokenizer_plugin is not None
+            else (profile.token_counter if profile is not None else None)
+        )
+        rules = tuple(load_rule(name) for name in args.rule_plugin)
         report = default_auditor(
             token_budget=(profile.token_budget if profile is not None else args.token_budget),
-            token_counter=(profile.token_counter if profile is not None else None),
+            token_counter=counter,
+            extra_rules=rules,
         ).audit(conversations)
         rendered = report_json(report) if args.format == "json" else report_markdown(report)
         _write(rendered, args.output)

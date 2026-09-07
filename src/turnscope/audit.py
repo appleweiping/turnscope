@@ -44,7 +44,10 @@ class Auditor:
 
 
 def default_auditor(
-    *, token_budget: int | None = None, token_counter: TokenCounter | None = None
+    *,
+    token_budget: int | None = None,
+    token_counter: TokenCounter | None = None,
+    extra_rules: Sequence[AuditRule] = (),
 ) -> Auditor:
     """Return the stable default rule set, optionally adding a total-token budget."""
     counter = whitespace_tokens if token_counter is None else token_counter
@@ -58,4 +61,5 @@ def default_auditor(
     ]
     if token_budget is not None:
         rules.append(ConversationBudgetRule(token_budget, token_counter=counter))
+    rules.extend(extra_rules)
     return Auditor(rules)

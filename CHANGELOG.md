@@ -4,6 +4,9 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add opt-in packaging entry points for external tokenizers and audit rules,
+  with a discovery CLI and strict plugin contracts.
+
 - Add strict named JSON profiles for reusable context policies, token counters,
   and audit budgets through `build --config` and `audit --config`.
 
