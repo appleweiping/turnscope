@@ -19,3 +19,10 @@ print(features[0].digest())
 The pipeline requires an explicit fit before transformation and rejects
 duplicate step names or duplicate conversation IDs. `FeatureRecord.digest()`
 is a canonical cache key for JSON-serializable feature blocks.
+
+For interpretable social-signal analysis, `linguistic_coordination()` accepts a
+named mapping of function-word categories and returns one directional score for
+each ordered speaker pair. A score is the fraction of adjacent target turns
+that use a category when the source turn used it; `conditioned_turns` and
+`coordinated_turns` make low-support results visible, while `None` means the
+source never supplied evidence for that category.

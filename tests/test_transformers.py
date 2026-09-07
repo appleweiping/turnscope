@@ -7,6 +7,7 @@ from turnscope import (
     TfidfVectorizer,
     Utterance,
     conversation_features,
+    linguistic_coordination,
     speaker_profiles,
 )
 
@@ -69,3 +70,18 @@ def test_reply_profiles_use_metadata_field() -> None:
     ]
     profiles = speaker_profiles(Conversation("c", items), field="speaker")
     assert profiles[0].replies_received == 1 and profiles[1].replies_sent == 1
+
+
+def test_linguistic_coordination_is_directional_and_retains_no_evidence() -> None:
+    conversation = convo(
+        "coord",
+        ["I think we should act", "I think so", "the plan works"],
+        ["alice", "bob", "bob"],
+    )
+    scores = linguistic_coordination(conversation, {"cognition": {"think"}, "modal": {"should"}})
+    by_key = {(item.source, item.target, item.category): item for item in scores}
+    assert by_key[("alice", "bob", "cognition")].score == pytest.approx(1.0)
+    assert by_key[("alice", "bob", "modal")].score == pytest.approx(0.0)
+    assert by_key[("bob", "alice", "cognition")].score is None
+    with pytest.raises(ValueError, match="non-empty"):
+        linguistic_coordination(conversation, {})

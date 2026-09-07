@@ -175,3 +175,85 @@ def speaker_profiles(
             SpeakerProfile(speaker, len(items), len(tokens), len(set(tokens)), sent, received_count)
         )
     return tuple(result)
+
+
+@dataclass(frozen=True, slots=True)
+class CoordinationScore:
+    """Directional function-word coordination between two speaker roles.
+
+    ``score`` is the conditional response rate: among source turns that use a
+    category, the fraction of immediately following target turns that also use
+    that category. Counts are retained so small samples are not mistaken for a
+    reliable population estimate.
+    """
+
+    source: str
+    target: str
+    category: str
+    score: float | None
+    conditioned_turns: int
+    coordinated_turns: int
+
+
+def linguistic_coordination(
+    conversation: Conversation,
+    categories: Mapping[str, Iterable[str]],
+) -> tuple[CoordinationScore, ...]:
+    """Measure deterministic adjacent-turn linguistic coordination.
+
+    Categories map names to function words (case-insensitive). Only adjacent
+    utterances by different roles are considered; reply-tree traversal is not
+    inferred from missing ``reply_to`` links. A ``None`` score means that no
+    source turn used the category, preserving the distinction between no
+    evidence and zero coordination.
+    """
+
+    if not isinstance(categories, Mapping) or not categories:
+        raise ValueError("categories must be a non-empty mapping")
+    normalized: dict[str, frozenset[str]] = {}
+    for name, words in categories.items():
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("category names must be non-empty strings")
+        if name in normalized:
+            raise ValueError(f"duplicate category {name!r}")
+        terms = frozenset(
+            token.casefold() for token in words if isinstance(token, str) and token.strip()
+        )
+        if not terms:
+            raise ValueError(f"category {name!r} must contain at least one word")
+        normalized[name] = terms
+
+    roles = tuple(sorted({item.role for item in conversation.utterances}))
+    counters: dict[tuple[str, str, str], list[int]] = defaultdict(lambda: [0, 0])
+    for source_item, target_item in zip(
+        conversation.utterances, conversation.utterances[1:], strict=False
+    ):
+        if source_item.role == target_item.role:
+            continue
+        source_tokens = set(_tokens(source_item.text))
+        target_tokens = set(_tokens(target_item.text))
+        for category, words in normalized.items():
+            if not source_tokens & words:
+                continue
+            bucket = counters[(source_item.role, target_item.role, category)]
+            bucket[0] += 1
+            bucket[1] += int(bool(target_tokens & words))
+
+    scores: list[CoordinationScore] = []
+    for source_role in roles:
+        for target_role in roles:
+            if source_role == target_role:
+                continue
+            for category in normalized:
+                conditioned, coordinated = counters[(source_role, target_role, category)]
+                scores.append(
+                    CoordinationScore(
+                        source_role,
+                        target_role,
+                        category,
+                        None if conditioned == 0 else coordinated / conditioned,
+                        conditioned,
+                        coordinated,
+                    )
+                )
+    return tuple(scores)

@@ -30,10 +30,12 @@ from .policies import (
 from .search import ConversationSearchIndex, SearchHit
 from .transformers import (
     ConversationFeatures,
+    CoordinationScore,
     SpeakerProfile,
     TfidfState,
     TfidfVectorizer,
     conversation_features,
+    linguistic_coordination,
     speaker_profiles,
 )
 
@@ -50,6 +52,7 @@ __all__ = [
     "ConversationFeatures",
     "ConversationSearchIndex",
     "ConversationTransformer",
+    "CoordinationScore",
     "CorpusStore",
     "FeaturePipeline",
     "FeatureRecord",
@@ -81,6 +84,7 @@ __all__ = [
     "iter_adapted_path",
     "iter_conversations",
     "iter_path",
+    "linguistic_coordination",
     "reply_forest",
     "speaker_profiles",
 ]
