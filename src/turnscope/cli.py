@@ -13,6 +13,7 @@ from pathlib import Path
 from . import __version__
 from .audit import default_auditor
 from .builder import ContextBuilder
+from .classifier import ConversationClassifier
 from .corpus import CorpusStore
 from .io import DataFormatError, conversation_to_dict, iter_path, load_path
 from .models import ContextWindow, Conversation, Severity
@@ -71,6 +72,18 @@ def _parser() -> argparse.ArgumentParser:
     speaker.add_argument("input", type=Path)
     speaker.add_argument("--field", help="metadata field containing a stable speaker identity")
     speaker.add_argument("--output", "-o", type=Path)
+    classify = subcommands.add_parser(
+        "classify", help="fit and apply a conversation text classifier"
+    )
+    classify.add_argument("train", type=Path, help="training conversations")
+    classify.add_argument("predict", type=Path, help="conversations to classify")
+    classify.add_argument(
+        "--labels", type=Path, required=True, help="JSON object mapping training IDs to labels"
+    )
+    classify.add_argument("--model", type=Path, help="save a fitted authenticated model artifact")
+    classify.add_argument("--alpha", type=float, default=1.0)
+    classify.add_argument("--max-features", type=int)
+    classify.add_argument("--output", "-o", type=Path)
     return parser
 
 
@@ -142,6 +155,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "corpus":
             return _corpus_command(args)
+        if args.command == "classify":
+            return _classify_command(args)
         if args.command in {"build", "audit", "speaker-profile"} and _paths_collide(
             args.input, args.output
         ):
@@ -227,6 +242,56 @@ def _corpus_command(args: argparse.Namespace) -> int:
         else:
             result = conversation_to_dict(store.get(args.id))
         print(json.dumps(result, ensure_ascii=True, allow_nan=False))
+    return 0
+
+
+def _classify_command(args: argparse.Namespace) -> int:
+    """Fit a transparent model, persist it optionally, and emit predictions."""
+
+    for left, right, message in (
+        (args.train, args.predict, "training and prediction inputs must differ"),
+        (args.output, args.train, "output path must differ from training input"),
+        (args.output, args.predict, "output path must differ from prediction input"),
+        (args.model, args.train, "model path must differ from training input"),
+        (args.model, args.predict, "model path must differ from prediction input"),
+    ):
+        if left is not None and _paths_collide(left, right):
+            raise ValueError(message)
+    try:
+        labels = json.loads(args.labels.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"cannot load labels: {error}") from error
+    if not isinstance(labels, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) and value.strip()
+        for key, value in labels.items()
+    ):
+        raise ValueError("labels must be a JSON object of non-empty string values")
+    training = load_path(args.train)
+    model = ConversationClassifier(alpha=args.alpha, max_features=args.max_features).fit(
+        training, labels
+    )
+    if args.model is not None:
+        model.save(args.model)
+    predictions = []
+    for conversation in load_path(args.predict):
+        probabilities = model.predict_proba(conversation)
+        predictions.append(
+            {
+                "id": conversation.id,
+                "label": model.predict(conversation),
+                "probabilities": dict(probabilities),
+            }
+        )
+    _write(
+        json.dumps(
+            {"model_digest": model.digest(), "predictions": predictions},
+            ensure_ascii=True,
+            allow_nan=False,
+            sort_keys=True,
+        )
+        + "\n",
+        args.output,
+    )
     return 0
 
 

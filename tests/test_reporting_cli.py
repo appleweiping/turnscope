@@ -120,6 +120,47 @@ def test_cli_speaker_profile_aggregates_global_identities(tmp_path, capsys) -> N
     assert payload[0]["conversations"] == 2
 
 
+def test_cli_classify_fits_persists_and_emits_probabilities(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    train = tmp_path / "train.jsonl"
+    predict = tmp_path / "predict.json"
+    labels = tmp_path / "labels.json"
+    model = tmp_path / "model.json"
+
+    def row(identifier: str, utterance_id: str, text: str) -> dict[str, object]:
+        return {
+            "id": identifier,
+            "utterances": [
+                {
+                    "id": utterance_id,
+                    "role": "user",
+                    "text": text,
+                    "timestamp": "2026-01-01T00:00:00Z",
+                }
+            ],
+        }
+
+    train.write_text(
+        "\n".join(
+            json.dumps(row(identifier, utterance_id, text))
+            for identifier, utterance_id, text in (
+                ("billing", "u1", "refund payment"),
+                ("delivery", "u2", "ship package"),
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    predict.write_text(json.dumps(row("query", "u3", "payment refund")), encoding="utf-8")
+    labels.write_text('{"billing":"finance","delivery":"shipping"}', encoding="utf-8")
+    assert (
+        main(["classify", str(train), str(predict), "--labels", str(labels), "--model", str(model)])
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["predictions"][0]["label"] == "finance"
+    assert model.exists()
+
+
 def test_cli_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as error:
         main(["--version"])
