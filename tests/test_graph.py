@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from turnscope import Conversation, Utterance, interaction_edges, reply_forest
+from turnscope import Conversation, Utterance, interaction_edges, interaction_network, reply_forest
 
 
 def message(id: str, parent: str | None = None, seconds: int = 0) -> Utterance:
@@ -89,3 +89,42 @@ def test_explicit_speaker_identity(conversation: Conversation) -> None:
     )
     (edge,) = interaction_edges(conversation, speaker_field="speaker")
     assert (edge.sender, edge.recipient, edge.mean_latency_seconds) == ("bob", "alice", 10)
+
+
+def test_interaction_network_aggregates_conversations_deterministically() -> None:
+    first = Conversation(
+        "first",
+        [
+            replace(message("a"), metadata={"speaker": "alice"}),
+            replace(message("b", "a", 10), metadata={"speaker": "bob"}),
+        ],
+    )
+    second = Conversation(
+        "second",
+        [
+            replace(message("x"), metadata={"speaker": "alice"}),
+            replace(message("y", "x", 20), metadata={"speaker": "bob"}),
+            replace(message("z", "y", 15), metadata={"speaker": "alice"}),
+        ],
+    )
+    report = interaction_network((second, first), speaker_field="speaker")
+    assert report.conversations == 2
+    assert tuple(report.speakers) == ("alice", "bob")
+    assert report.speakers["alice"].utterances == 3
+    assert report.speakers["alice"].replies_received == 2
+    assert [
+        (edge.sender, edge.recipient, edge.replies, edge.conversations) for edge in report.edges
+    ] == [
+        ("alice", "bob", 1, 1),
+        ("bob", "alice", 2, 2),
+    ]
+    assert report.edges[1].mean_latency_seconds == 15.0
+    assert report.to_dict()["speakers"][0]["speaker"] == "alice"
+
+
+def test_interaction_network_accepts_generators_and_validates_values() -> None:
+    assert interaction_network(iter(()), speaker_field="speaker").conversations == 0
+    with pytest.raises(TypeError, match="Conversation"):
+        interaction_network([object()])  # type: ignore[list-item]
+    with pytest.raises(ValueError, match="speaker"):
+        interaction_network([Conversation("bad", [message("a")])], speaker_field="speaker")

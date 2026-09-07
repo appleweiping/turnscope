@@ -14,7 +14,16 @@ from .audit import Auditor, default_auditor
 from .builder import ContextBuilder
 from .classifier import ClassifierState, ConversationClassifier
 from .corpus import CorpusStore
-from .graph import InteractionEdge, ReplyForest, interaction_edges, reply_forest
+from .graph import (
+    InteractionEdge,
+    InteractionNetwork,
+    NetworkEdge,
+    ReplyForest,
+    SpeakerSummary,
+    interaction_edges,
+    interaction_network,
+    reply_forest,
+)
 from .io import iter_conversations, iter_path
 from .models import AuditReport, ContextWindow, Conversation, Issue, Severity, Utterance
 from .pipeline import CallableTransformer, ConversationTransformer, FeaturePipeline, FeatureRecord
@@ -63,12 +72,15 @@ __all__ = [
     "FeaturePipeline",
     "FeatureRecord",
     "InteractionEdge",
+    "InteractionNetwork",
     "Issue",
+    "NetworkEdge",
     "ReplyChainPolicy",
     "ReplyForest",
     "SearchHit",
     "Severity",
     "SpeakerProfile",
+    "SpeakerSummary",
     "TfidfState",
     "TfidfVectorizer",
     "TimeWindowPolicy",
@@ -86,6 +98,7 @@ __all__ = [
     "corpus_speaker_profiles",
     "default_auditor",
     "interaction_edges",
+    "interaction_network",
     "iter_adapted_conversations",
     "iter_adapted_jsonl",
     "iter_adapted_path",

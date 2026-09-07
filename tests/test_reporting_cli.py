@@ -120,6 +120,21 @@ def test_cli_speaker_profile_aggregates_global_identities(tmp_path, capsys) -> N
     assert payload[0]["conversations"] == 2
 
 
+def test_cli_network_reports_cross_conversation_edges(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    source = tmp_path / "conversations.jsonl"
+    source.write_text(
+        '{"id":"one","utterances":[{"id":"a","role":"alice","text":"hello",'
+        '"timestamp":"2026-01-01T00:00:00+00:00"},{"id":"b","role":"bob","text":"hi",'
+        '"timestamp":"2026-01-01T00:00:01+00:00","reply_to":"a"}]}\n',
+        encoding="utf-8",
+    )
+    assert main(["network", str(source)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["conversations"] == 1
+    assert payload["edges"][0]["sender"] == "bob"
+    assert payload["speakers"][0]["speaker"] == "alice"
+
+
 def test_cli_classify_fits_persists_and_emits_probabilities(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
     train = tmp_path / "train.jsonl"
     predict = tmp_path / "predict.json"

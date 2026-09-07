@@ -15,6 +15,7 @@ from .audit import default_auditor
 from .builder import ContextBuilder
 from .classifier import ConversationClassifier
 from .corpus import CorpusStore
+from .graph import interaction_network
 from .io import DataFormatError, conversation_to_dict, iter_path, load_path
 from .models import ContextWindow, Conversation, Severity
 from .policies import (
@@ -72,6 +73,12 @@ def _parser() -> argparse.ArgumentParser:
     speaker.add_argument("input", type=Path)
     speaker.add_argument("--field", help="metadata field containing a stable speaker identity")
     speaker.add_argument("--output", "-o", type=Path)
+    network = subcommands.add_parser(
+        "network", help="aggregate reply interactions across a conversation corpus"
+    )
+    network.add_argument("input", type=Path)
+    network.add_argument("--field", help="metadata field containing a stable speaker identity")
+    network.add_argument("--output", "-o", type=Path)
     classify = subcommands.add_parser(
         "classify", help="fit and apply a conversation text classifier"
     )
@@ -157,7 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _corpus_command(args)
         if args.command == "classify":
             return _classify_command(args)
-        if args.command in {"build", "audit", "speaker-profile"} and _paths_collide(
+        if args.command in {"build", "audit", "speaker-profile", "network"} and _paths_collide(
             args.input, args.output
         ):
             raise ValueError("output path must differ from the input path")
@@ -208,6 +215,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + "\n"
             )
             _write(rendered, args.output)
+            return 0
+        if args.command == "network":
+            network_report = interaction_network(conversations, speaker_field=args.field)
+            _write(
+                json.dumps(
+                    network_report.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True
+                )
+                + "\n",
+                args.output,
+            )
             return 0
         if args.command == "build":
             policy = _policy(args.policy, args.value)

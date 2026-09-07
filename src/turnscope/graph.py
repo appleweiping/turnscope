@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict, deque
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -110,6 +110,66 @@ class InteractionEdge:
     negative_latencies: int
 
 
+@dataclass(frozen=True, slots=True)
+class NetworkEdge:
+    """A reply edge aggregated across a conversation collection."""
+
+    sender: str
+    recipient: str
+    replies: int
+    conversations: int
+    mean_latency_seconds: float
+    negative_latencies: int
+
+
+@dataclass(frozen=True, slots=True)
+class SpeakerSummary:
+    """Corpus-level activity counts for one role or speaker identity."""
+
+    speaker: str
+    conversations: int
+    utterances: int
+    replies_sent: int
+    replies_received: int
+
+
+@dataclass(frozen=True, slots=True)
+class InteractionNetwork:
+    """Deterministic corpus-level network with node and edge summaries."""
+
+    conversations: int
+    speakers: Mapping[str, SpeakerSummary]
+    edges: tuple[NetworkEdge, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a stable JSON-compatible network report."""
+
+        return {
+            "conversations": self.conversations,
+            "speakers": [
+                {
+                    "speaker": summary.speaker,
+                    "conversations": summary.conversations,
+                    "utterances": summary.utterances,
+                    "replies_sent": summary.replies_sent,
+                    "replies_received": summary.replies_received,
+                }
+                for summary in self.speakers.values()
+            ],
+            "edges": [
+                {
+                    "sender": edge.sender,
+                    "recipient": edge.recipient,
+                    "replies": edge.replies,
+                    "conversations": edge.conversations,
+                    "mean_latency_seconds": edge.mean_latency_seconds,
+                    "negative_latencies": edge.negative_latencies,
+                }
+                for edge in self.edges
+            ],
+        }
+
+
 def interaction_edges(
     conversation: Conversation, *, speaker_field: str | None = None
 ) -> tuple[InteractionEdge, ...]:
@@ -150,3 +210,67 @@ def interaction_edges(
         )
         for (sender, recipient), count in sorted(counts.items())
     )
+
+
+def interaction_network(
+    conversations: Iterable[Conversation],
+    *,
+    speaker_field: str | None = None,
+) -> InteractionNetwork:
+    """Aggregate reply interactions across conversations in deterministic order.
+
+    The function preserves signed latency semantics from :func:`interaction_edges`.
+    A speaker's conversation count is based on appearances, while edge
+    conversation counts count distinct conversations containing that direction.
+    """
+
+    materialized = tuple(conversations)
+    speaker_conversations: dict[str, set[str]] = defaultdict(set)
+    utterance_counts: Counter[str] = Counter()
+    edge_replies: Counter[tuple[str, str]] = Counter()
+    edge_conversations: dict[tuple[str, str], set[str]] = defaultdict(set)
+    edge_latency: defaultdict[tuple[str, str], float] = defaultdict(float)
+    edge_negative: Counter[tuple[str, str]] = Counter()
+    sent: Counter[str] = Counter()
+    received: Counter[str] = Counter()
+    for conversation in materialized:
+        if not isinstance(conversation, Conversation):
+            raise TypeError("conversations must contain Conversation values")
+        speakers: dict[str, str] = {}
+        for item in conversation.utterances:
+            value = item.role if speaker_field is None else item.metadata.get(speaker_field)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"missing or invalid speaker for utterance {item.id!r}")
+            speakers[item.id] = value
+            speaker_conversations[value].add(conversation.id)
+            utterance_counts[value] += 1
+        for edge in interaction_edges(conversation, speaker_field=speaker_field):
+            key = edge.sender, edge.recipient
+            edge_replies[key] += edge.replies
+            edge_conversations[key].add(conversation.id)
+            edge_latency[key] += edge.mean_latency_seconds * edge.replies
+            edge_negative[key] += edge.negative_latencies
+            sent[edge.sender] += edge.replies
+            received[edge.recipient] += edge.replies
+    summaries = {
+        speaker: SpeakerSummary(
+            speaker,
+            len(speaker_conversations[speaker]),
+            utterance_counts[speaker],
+            sent[speaker],
+            received[speaker],
+        )
+        for speaker in sorted(speaker_conversations)
+    }
+    edges = tuple(
+        NetworkEdge(
+            sender,
+            recipient,
+            count,
+            len(edge_conversations[sender, recipient]),
+            edge_latency[sender, recipient] / count,
+            edge_negative[sender, recipient],
+        )
+        for (sender, recipient), count in sorted(edge_replies.items())
+    )
+    return InteractionNetwork(len(materialized), MappingProxyType(summaries), edges)

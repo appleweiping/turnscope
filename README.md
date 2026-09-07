@@ -176,6 +176,14 @@ estimate; neither pretends to match a model tokenizer. See the [Python API](docs
 threshold (`info`, `warning`, or `error`). Exit code 0 means no finding met the threshold, 1 means findings did, and 2
 means the input or invocation could not be processed.
 
+### `turnscope network`
+
+`turnscope network conversations.jsonl` aggregates directed reply edges across
+the corpus and reports speaker activity, edge counts, conversation coverage, and
+signed latency diagnostics. Add `--field speaker_id` when metadata contains a
+stable identity rather than a role; `--output PATH` writes the deterministic JSON
+report.
+
 ## Design guarantees
 
 - Input sequence is authoritative. TurnScope reports chronology violations instead of sorting them away.

@@ -20,6 +20,8 @@ All notable changes follow the principles of Keep a Changelog.
 - Dependency-free fitted conversation classifier with authenticated JSON persistence and deterministic probabilities.
 - Add a `turnscope classify` CLI for fitting, authenticating, and applying the
   dependency-free conversation classifier.
+- Add corpus-level interaction-network aggregation with deterministic speaker
+  nodes, directed reply edges, signed latency summaries, and a `network` CLI.
 
 ## [0.2.0] - 2026-08-31
 
