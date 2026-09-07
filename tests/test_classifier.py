@@ -15,7 +15,10 @@ def _conversation(identifier: str, text: str) -> Conversation:
 
 
 def test_classifier_fit_predict_probability_and_round_trip(tmp_path) -> None:
-    conversations = (_conversation("a", "refund payment"), _conversation("b", "ship package"))
+    conversations = (
+        _conversation("a", "refund payment payment"),
+        _conversation("b", "ship package"),
+    )
     model = ConversationClassifier().fit(conversations, {"a": "billing", "b": "delivery"})
     assert model.predict(_conversation("c", "payment refund")) == "billing"
     assert sum(model.predict_proba(conversations[0]).values()) == pytest.approx(1.0)

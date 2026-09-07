@@ -216,11 +216,13 @@ class ConversationClassifier:
             raise ValueError("invalid classifier artifact fields") from error
         if (
             not vocabulary
+            or not all(isinstance(token, str) and token for token in vocabulary)
+            or len(set(vocabulary)) != len(vocabulary)
             or not labels
-            or tuple(sorted(vocabulary)) != vocabulary
             or tuple(sorted(labels)) != labels
             or documents < 1
             or set(probabilities) != set(labels)
+            or any(set(values) != set(vocabulary) for values in probabilities.values())
         ):
             raise ValueError("invalid classifier artifact values")
         model._state = ClassifierState(vocabulary, labels, priors, probabilities, documents)
