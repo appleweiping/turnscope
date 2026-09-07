@@ -147,6 +147,20 @@ class SpeakerProfile:
 
 
 @dataclass(frozen=True, slots=True)
+class CorpusSpeakerProfile:
+    """Aggregate one speaker identity across a conversation collection."""
+
+    speaker: str
+    conversations: int
+    utterances: int
+    tokens: int
+    unique_tokens: int
+    roles: Mapping[str, int]
+    replies_sent: int
+    replies_received: int
+
+
+@dataclass(frozen=True, slots=True)
 class DiversityProfile:
     """Lexical diversity summary for one speaker-like grouping."""
 
@@ -224,6 +238,69 @@ def speaker_profiles(
             SpeakerProfile(speaker, len(items), len(tokens), len(set(tokens)), sent, received_count)
         )
     return tuple(result)
+
+
+def corpus_speaker_profiles(
+    conversations: Iterable[Conversation], *, field: str | None = None
+) -> tuple[CorpusSpeakerProfile, ...]:
+    """Aggregate speaker identity, lexical counts, and reply edges globally.
+
+    By default the utterance role is the speaker key. A metadata ``field`` can
+    provide a stable speaker ID across conversations; missing or non-string
+    values fail rather than silently merging records under a placeholder.
+    Conversation IDs must be unique because they are part of the aggregate's
+    denominator.
+    """
+
+    materialized = tuple(conversations)
+    if not materialized:
+        raise ValueError("at least one conversation is required")
+    if not all(isinstance(item, Conversation) for item in materialized):
+        raise TypeError("conversations must contain Conversation values")
+    if len({item.id for item in materialized}) != len(materialized):
+        raise ValueError("conversation IDs must be unique")
+    conversation_ids: dict[str, set[str]] = defaultdict(set)
+    utterance_counts: Counter[str] = Counter()
+    token_counts: Counter[str] = Counter()
+    token_values: dict[str, set[str]] = defaultdict(set)
+    role_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    sent_counts: Counter[str] = Counter()
+    received_counts: Counter[str] = Counter()
+
+    def speaker(item: Utterance) -> str:
+        value = item.role if field is None else item.metadata.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"missing speaker value for utterance {item.id!r}")
+        return value
+
+    for conversation in materialized:
+        by_id = conversation.by_id()
+        speakers = {item.id: speaker(item) for item in conversation.utterances}
+        for item in conversation.utterances:
+            current = speakers[item.id]
+            tokens = _tokens(item.text)
+            conversation_ids[current].add(conversation.id)
+            utterance_counts[current] += 1
+            token_counts[current] += len(tokens)
+            token_values[current].update(tokens)
+            role_counts[current][item.role] += 1
+            if item.reply_to in by_id:
+                sent_counts[current] += 1
+                received_counts[speakers[item.reply_to]] += 1
+
+    return tuple(
+        CorpusSpeakerProfile(
+            name,
+            len(conversation_ids[name]),
+            utterance_counts[name],
+            token_counts[name],
+            len(token_values[name]),
+            MappingProxyType(dict(sorted(role_counts[name].items()))),
+            sent_counts[name],
+            received_counts[name],
+        )
+        for name in sorted(conversation_ids)
+    )
 
 
 @dataclass(frozen=True, slots=True)

@@ -47,6 +47,17 @@ given string. Supplied utterance `token_count` values still take precedence.
 
 Neither implementation claims model-tokenizer equivalence. Pass a custom callable for exact model accounting.
 
+## Corpus-wide speaker profiles
+
+`corpus_speaker_profiles()` aggregates stable speaker identities across a
+conversation collection, including conversation/utterance counts, lexical
+vocabulary size, role composition, and reply edges. It uses utterance roles by
+default or a required metadata field when provider-specific speaker IDs are
+available. Duplicate conversation IDs and missing identities fail explicitly.
+
+The same analysis is available as `turnscope speaker-profile DATASET`, which
+emits deterministic JSON and accepts `--field` for metadata-backed identities.
+
 ## Audit
 
 `Auditor.audit()` now consumes the conversation iterable in one pass instead of tupleizing it. The returned

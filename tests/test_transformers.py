@@ -7,6 +7,7 @@ from turnscope import (
     TfidfVectorizer,
     Utterance,
     conversation_features,
+    corpus_speaker_profiles,
     linguistic_coordination,
     linguistic_diversity,
     speaker_profiles,
@@ -71,6 +72,31 @@ def test_reply_profiles_use_metadata_field() -> None:
     ]
     profiles = speaker_profiles(Conversation("c", items), field="speaker")
     assert profiles[0].replies_received == 1 and profiles[1].replies_sent == 1
+
+
+def test_corpus_speaker_profiles_aggregate_identity_and_reply_edges() -> None:
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    first = Conversation(
+        "one",
+        (
+            Utterance("a", "alice", "hello", start),
+            Utterance("b", "bob", "reply", start, "a"),
+        ),
+    )
+    second = convo("two", ["again"], ["alice"])
+    profiles = corpus_speaker_profiles((first, second))
+    assert profiles[0].speaker == "alice"
+    assert profiles[0].conversations == 2 and profiles[0].utterances == 2
+    assert profiles[0].replies_received == 1 and profiles[1].replies_sent == 1
+    assert dict(profiles[0].roles) == {"alice": 2}
+
+
+def test_corpus_speaker_profiles_reject_duplicate_conversations_and_missing_field() -> None:
+    conversation = convo("one", ["hello"])
+    with pytest.raises(ValueError, match="IDs must be unique"):
+        corpus_speaker_profiles((conversation, conversation))
+    with pytest.raises(ValueError, match="missing speaker"):
+        corpus_speaker_profiles((conversation,), field="speaker")
 
 
 def test_linguistic_coordination_is_directional_and_retains_no_evidence() -> None:

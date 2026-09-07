@@ -105,6 +105,21 @@ def test_cli_search(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
     assert result[0]["utterance_id"] == "1"
 
 
+def test_cli_speaker_profile_aggregates_global_identities(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    source = tmp_path / "conversations.jsonl"
+    source.write_text(
+        '{"id":"one","utterances":[{"id":"a","role":"alice","text":"hello",'
+        '"timestamp":"2026-01-01T00:00:00+00:00"}]}\n'
+        '{"id":"two","utterances":[{"id":"b","role":"alice","text":"again",'
+        '"timestamp":"2026-01-01T00:00:00+00:00"}]}\n',
+        encoding="utf-8",
+    )
+    assert main(["speaker-profile", str(source)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload[0]["speaker"] == "alice"
+    assert payload[0]["conversations"] == 2
+
+
 def test_cli_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as error:
         main(["--version"])

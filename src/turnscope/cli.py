@@ -25,6 +25,7 @@ from .policies import (
 )
 from .reporting import report_json, report_markdown, windows_json
 from .search import ConversationSearchIndex
+from .transformers import corpus_speaker_profiles
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -64,6 +65,12 @@ def _parser() -> argparse.ArgumentParser:
     search.add_argument("query")
     search.add_argument("--limit", type=int, default=10)
     search.add_argument("--conversation")
+    speaker = subcommands.add_parser(
+        "speaker-profile", help="aggregate speaker identities across conversations"
+    )
+    speaker.add_argument("input", type=Path)
+    speaker.add_argument("--field", help="metadata field containing a stable speaker identity")
+    speaker.add_argument("--output", "-o", type=Path)
     return parser
 
 
@@ -135,7 +142,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "corpus":
             return _corpus_command(args)
-        if args.command in {"build", "audit"} and _paths_collide(args.input, args.output):
+        if args.command in {"build", "audit", "speaker-profile"} and _paths_collide(
+            args.input, args.output
+        ):
             raise ValueError("output path must differ from the input path")
         conversations = load_path(args.input)
         if args.command == "search":
@@ -159,6 +168,28 @@ def main(argv: Sequence[str] | None = None) -> int:
                     allow_nan=False,
                 )
             )
+            return 0
+        if args.command == "speaker-profile":
+            profiles = corpus_speaker_profiles(conversations, field=args.field)
+            rendered = json.dumps(
+                [
+                    {
+                        "speaker": profile.speaker,
+                        "conversations": profile.conversations,
+                        "utterances": profile.utterances,
+                        "tokens": profile.tokens,
+                        "unique_tokens": profile.unique_tokens,
+                        "roles": dict(profile.roles),
+                        "replies_sent": profile.replies_sent,
+                        "replies_received": profile.replies_received,
+                    }
+                    for profile in profiles
+                ],
+                ensure_ascii=True,
+                allow_nan=False,
+                sort_keys=True,
+            ) + "\n"
+            _write(rendered, args.output)
             return 0
         if args.command == "build":
             policy = _policy(args.policy, args.value)
