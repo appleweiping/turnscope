@@ -25,6 +25,7 @@ from .policies import (
     Utf8ByteTokenCounter,
     WhitespaceTokenCounter,
 )
+from .search import ConversationSearchIndex, SearchHit
 from .transformers import (
     ConversationFeatures,
     SpeakerProfile,
@@ -42,11 +43,13 @@ __all__ = [
     "ContextWindow",
     "Conversation",
     "ConversationFeatures",
+    "ConversationSearchIndex",
     "CorpusStore",
     "InteractionEdge",
     "Issue",
     "ReplyChainPolicy",
     "ReplyForest",
+    "SearchHit",
     "Severity",
     "SpeakerProfile",
     "TfidfState",
