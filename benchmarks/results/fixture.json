@@ -1,0 +1,15 @@
+{
+  "conversations": 1,
+  "elapsed_seconds": 0.012439699989045039,
+  "feature_records": 1,
+  "indexed_documents": 4,
+  "kind": "fixture-real",
+  "peak_python_bytes": 22592,
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.14.5",
+  "search_hits": 2,
+  "source": "examples/conversations.json",
+  "source_bytes": 614,
+  "source_sha256": "ec195470a3d424940cda643ab7439e24e70bf4d39420b5dbabf635605d9bd219",
+  "utterances": 4
+}
