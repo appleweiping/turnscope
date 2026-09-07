@@ -4,6 +4,11 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+### Added
+
+- Atomic SQLite corpus imports, replacement, keyset pagination, and corpus CLI queries.
+- Iterative reply-forest analysis and explicit role/speaker interaction aggregation.
+
 ## [0.2.0] - 2026-08-31
 
 ### Added

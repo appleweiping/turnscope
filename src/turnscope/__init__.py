@@ -12,6 +12,8 @@ from .adapters import (
 )
 from .audit import Auditor, default_auditor
 from .builder import ContextBuilder
+from .corpus import CorpusStore
+from .graph import InteractionEdge, ReplyForest, interaction_edges, reply_forest
 from .io import iter_conversations, iter_path
 from .models import AuditReport, ContextWindow, Conversation, Issue, Severity, Utterance
 from .policies import (
@@ -31,8 +33,11 @@ __all__ = [
     "ContextBuilder",
     "ContextWindow",
     "Conversation",
+    "CorpusStore",
+    "InteractionEdge",
     "Issue",
     "ReplyChainPolicy",
+    "ReplyForest",
     "Severity",
     "TimeWindowPolicy",
     "TokenBudgetPolicy",
@@ -46,11 +51,13 @@ __all__ = [
     "adapt_openai",
     "adapt_sharegpt",
     "default_auditor",
+    "interaction_edges",
     "iter_adapted_conversations",
     "iter_adapted_jsonl",
     "iter_adapted_path",
     "iter_conversations",
     "iter_path",
+    "reply_forest",
 ]
 
 __version__ = "0.2.0"

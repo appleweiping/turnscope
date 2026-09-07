@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import sqlite3
 import sys
 from collections.abc import Sequence
 from datetime import timedelta
@@ -11,7 +13,8 @@ from pathlib import Path
 from . import __version__
 from .audit import default_auditor
 from .builder import ContextBuilder
-from .io import DataFormatError, load_path
+from .corpus import CorpusStore
+from .io import DataFormatError, conversation_to_dict, iter_path, load_path
 from .models import ContextWindow, Conversation, Severity
 from .policies import (
     ReplyChainPolicy,
@@ -40,6 +43,21 @@ def _parser() -> argparse.ArgumentParser:
     audit.add_argument("--format", choices=("json", "markdown"), default="markdown")
     audit.add_argument("--token-budget", type=int)
     audit.add_argument("--fail-on", choices=("info", "warning", "error"), default="error")
+    corpus = subcommands.add_parser("corpus", help="store and query a disk-backed corpus")
+    actions = corpus.add_subparsers(dest="action", required=True)
+    ingest = actions.add_parser("import", help="atomically import JSON or JSONL conversations")
+    ingest.add_argument("database", type=Path)
+    ingest.add_argument("input", type=Path)
+    ingest.add_argument("--replace", action="store_true")
+    stats = actions.add_parser("stats", help="print conversation and utterance counts")
+    stats.add_argument("database", type=Path)
+    listing = actions.add_parser("list", help="print one page of conversation IDs")
+    listing.add_argument("database", type=Path)
+    listing.add_argument("--after")
+    listing.add_argument("--limit", type=int, default=100)
+    get = actions.add_parser("get", help="print one conversation as JSON")
+    get.add_argument("database", type=Path)
+    get.add_argument("id")
     return parser
 
 
@@ -109,6 +127,8 @@ def _build_windows(
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
+        if args.command == "corpus":
+            return _corpus_command(args)
         if _paths_collide(args.input, args.output):
             raise ValueError("output path must differ from the input path")
         conversations = load_path(args.input)
@@ -121,9 +141,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         rendered = report_json(report) if args.format == "json" else report_markdown(report)
         _write(rendered, args.output)
         return 1 if report.failing(Severity.parse(args.fail_on)) else 0
-    except (DataFormatError, OSError, OverflowError, ValueError, KeyError) as error:
+    except (DataFormatError, OSError, OverflowError, ValueError, KeyError, sqlite3.Error) as error:
         print(f"turnscope: error: {error}", file=sys.stderr)
         return 2
+
+
+def _corpus_command(args: argparse.Namespace) -> int:
+    if args.action == "import":
+        if _paths_collide(args.input, args.database):
+            raise ValueError("database path must differ from the input path")
+        if not args.input.is_file():
+            raise ValueError("input must be an existing file")
+    elif not args.database.is_file():
+        raise ValueError("database must be an existing file")
+    with CorpusStore(args.database) as store:
+        if args.action == "import":
+            result: object = {"imported": store.put(iter_path(args.input), replace=args.replace)}
+        elif args.action == "stats":
+            conversations, utterances = store.counts()
+            result = {"conversations": conversations, "utterances": utterances}
+        elif args.action == "list":
+            result = store.ids(after=args.after, limit=args.limit)
+        else:
+            result = conversation_to_dict(store.get(args.id))
+        print(json.dumps(result, ensure_ascii=True, allow_nan=False))
+    return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
