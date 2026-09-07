@@ -24,6 +24,7 @@ from .policies import (
     WindowPolicy,
 )
 from .reporting import report_json, report_markdown, windows_json
+from .search import ConversationSearchIndex
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -58,6 +59,11 @@ def _parser() -> argparse.ArgumentParser:
     get = actions.add_parser("get", help="print one conversation as JSON")
     get.add_argument("database", type=Path)
     get.add_argument("id")
+    search = subcommands.add_parser("search", help="lexically search indexed utterances")
+    search.add_argument("input", type=Path)
+    search.add_argument("query")
+    search.add_argument("--limit", type=int, default=10)
+    search.add_argument("--conversation")
     return parser
 
 
@@ -129,9 +135,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "corpus":
             return _corpus_command(args)
-        if _paths_collide(args.input, args.output):
+        if args.command in {"build", "audit"} and _paths_collide(args.input, args.output):
             raise ValueError("output path must differ from the input path")
         conversations = load_path(args.input)
+        if args.command == "search":
+            hits = ConversationSearchIndex(conversations).query(
+                args.query,
+                limit=args.limit,
+                conversation_id=args.conversation,
+            )
+            print(
+                json.dumps(
+                    [
+                        {
+                            "conversation_id": hit.conversation_id,
+                            "utterance_id": hit.utterance_id,
+                            "score": hit.score,
+                            "matched_terms": list(hit.matched_terms),
+                        }
+                        for hit in hits
+                    ],
+                    ensure_ascii=True,
+                    allow_nan=False,
+                )
+            )
+            return 0
         if args.command == "build":
             policy = _policy(args.policy, args.value)
             windows = _build_windows(conversations, policy, args.target)

@@ -76,6 +76,35 @@ def test_cli_build_and_audit(tmp_path, capsys) -> None:  # type: ignore[no-untyp
     assert json.loads(capsys.readouterr().out)["summary"]["issues"] == 0
 
 
+def test_cli_search(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    source = tmp_path / "input.json"
+    source.write_text(
+        json.dumps(
+            {
+                "id": "demo",
+                "utterances": [
+                    {
+                        "id": "1",
+                        "role": "user",
+                        "text": "power stability",
+                        "timestamp": "2026-01-01T00:00:00Z",
+                    },
+                    {
+                        "id": "2",
+                        "role": "assistant",
+                        "text": "unrelated",
+                        "timestamp": "2026-01-01T00:00:01Z",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert main(["search", str(source), "stability"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result[0]["utterance_id"] == "1"
+
+
 def test_cli_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as error:
         main(["--version"])
