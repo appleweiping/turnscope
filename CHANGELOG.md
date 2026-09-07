@@ -22,6 +22,8 @@ All notable changes follow the principles of Keep a Changelog.
   dependency-free conversation classifier.
 - Add corpus-level interaction-network aggregation with deterministic speaker
   nodes, directed reply edges, signed latency summaries, and a `network` CLI.
+- Add `InteractionNetworkAccumulator` and incremental JSONL network aggregation;
+  the `network` CLI now avoids materializing the complete corpus.
 
 ## [0.2.0] - 2026-08-31
 

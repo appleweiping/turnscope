@@ -168,6 +168,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.input, args.output
         ):
             raise ValueError("output path must differ from the input path")
+        if args.command == "network":
+            network_report = interaction_network(iter_path(args.input), speaker_field=args.field)
+            _write(
+                json.dumps(
+                    network_report.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True
+                )
+                + "\n",
+                args.output,
+            )
+            return 0
         conversations = load_path(args.input)
         if args.command == "search":
             hits = ConversationSearchIndex(conversations).query(
@@ -215,16 +225,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + "\n"
             )
             _write(rendered, args.output)
-            return 0
-        if args.command == "network":
-            network_report = interaction_network(conversations, speaker_field=args.field)
-            _write(
-                json.dumps(
-                    network_report.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True
-                )
-                + "\n",
-                args.output,
-            )
             return 0
         if args.command == "build":
             policy = _policy(args.policy, args.value)

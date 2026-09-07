@@ -17,6 +17,7 @@ from .corpus import CorpusStore
 from .graph import (
     InteractionEdge,
     InteractionNetwork,
+    InteractionNetworkAccumulator,
     NetworkEdge,
     ReplyForest,
     SpeakerSummary,
@@ -73,6 +74,7 @@ __all__ = [
     "FeatureRecord",
     "InteractionEdge",
     "InteractionNetwork",
+    "InteractionNetworkAccumulator",
     "Issue",
     "NetworkEdge",
     "ReplyChainPolicy",

@@ -170,6 +170,77 @@ class InteractionNetwork:
         }
 
 
+class InteractionNetworkAccumulator:
+    """Incrementally aggregate reply interactions without retaining conversations."""
+
+    def __init__(self, *, speaker_field: str | None = None) -> None:
+        if speaker_field is not None and (
+            not isinstance(speaker_field, str) or not speaker_field.strip()
+        ):
+            raise ValueError("speaker_field must be a non-empty string or None")
+        self.speaker_field = speaker_field
+        self._conversations = 0
+        self._speaker_conversations: dict[str, set[str]] = defaultdict(set)
+        self._utterance_counts: Counter[str] = Counter()
+        self._edge_replies: Counter[tuple[str, str]] = Counter()
+        self._edge_conversations: dict[tuple[str, str], set[str]] = defaultdict(set)
+        self._edge_latency: defaultdict[tuple[str, str], float] = defaultdict(float)
+        self._edge_negative: Counter[tuple[str, str]] = Counter()
+        self._sent: Counter[str] = Counter()
+        self._received: Counter[str] = Counter()
+
+    def add(self, conversation: Conversation) -> None:
+        """Consume one conversation; duplicate IDs are rejected by graph validation."""
+
+        if not isinstance(conversation, Conversation):
+            raise TypeError("conversation must be a Conversation")
+        speakers: dict[str, str] = {}
+        for item in conversation.utterances:
+            value = (
+                item.role if self.speaker_field is None else item.metadata.get(self.speaker_field)
+            )
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"missing or invalid speaker for utterance {item.id!r}")
+            speakers[item.id] = value
+            self._speaker_conversations[value].add(conversation.id)
+            self._utterance_counts[value] += 1
+        for edge in interaction_edges(conversation, speaker_field=self.speaker_field):
+            key = edge.sender, edge.recipient
+            self._edge_replies[key] += edge.replies
+            self._edge_conversations[key].add(conversation.id)
+            self._edge_latency[key] += edge.mean_latency_seconds * edge.replies
+            self._edge_negative[key] += edge.negative_latencies
+            self._sent[edge.sender] += edge.replies
+            self._received[edge.recipient] += edge.replies
+        self._conversations += 1
+
+    def finish(self) -> InteractionNetwork:
+        """Return a deterministic snapshot of the consumed aggregate."""
+
+        summaries = {
+            speaker: SpeakerSummary(
+                speaker,
+                len(self._speaker_conversations[speaker]),
+                self._utterance_counts[speaker],
+                self._sent[speaker],
+                self._received[speaker],
+            )
+            for speaker in sorted(self._speaker_conversations)
+        }
+        edges = tuple(
+            NetworkEdge(
+                sender,
+                recipient,
+                count,
+                len(self._edge_conversations[sender, recipient]),
+                self._edge_latency[sender, recipient] / count,
+                self._edge_negative[sender, recipient],
+            )
+            for (sender, recipient), count in sorted(self._edge_replies.items())
+        )
+        return InteractionNetwork(self._conversations, MappingProxyType(summaries), edges)
+
+
 def interaction_edges(
     conversation: Conversation, *, speaker_field: str | None = None
 ) -> tuple[InteractionEdge, ...]:
@@ -224,53 +295,7 @@ def interaction_network(
     conversation counts count distinct conversations containing that direction.
     """
 
-    materialized = tuple(conversations)
-    speaker_conversations: dict[str, set[str]] = defaultdict(set)
-    utterance_counts: Counter[str] = Counter()
-    edge_replies: Counter[tuple[str, str]] = Counter()
-    edge_conversations: dict[tuple[str, str], set[str]] = defaultdict(set)
-    edge_latency: defaultdict[tuple[str, str], float] = defaultdict(float)
-    edge_negative: Counter[tuple[str, str]] = Counter()
-    sent: Counter[str] = Counter()
-    received: Counter[str] = Counter()
-    for conversation in materialized:
-        if not isinstance(conversation, Conversation):
-            raise TypeError("conversations must contain Conversation values")
-        speakers: dict[str, str] = {}
-        for item in conversation.utterances:
-            value = item.role if speaker_field is None else item.metadata.get(speaker_field)
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"missing or invalid speaker for utterance {item.id!r}")
-            speakers[item.id] = value
-            speaker_conversations[value].add(conversation.id)
-            utterance_counts[value] += 1
-        for edge in interaction_edges(conversation, speaker_field=speaker_field):
-            key = edge.sender, edge.recipient
-            edge_replies[key] += edge.replies
-            edge_conversations[key].add(conversation.id)
-            edge_latency[key] += edge.mean_latency_seconds * edge.replies
-            edge_negative[key] += edge.negative_latencies
-            sent[edge.sender] += edge.replies
-            received[edge.recipient] += edge.replies
-    summaries = {
-        speaker: SpeakerSummary(
-            speaker,
-            len(speaker_conversations[speaker]),
-            utterance_counts[speaker],
-            sent[speaker],
-            received[speaker],
-        )
-        for speaker in sorted(speaker_conversations)
-    }
-    edges = tuple(
-        NetworkEdge(
-            sender,
-            recipient,
-            count,
-            len(edge_conversations[sender, recipient]),
-            edge_latency[sender, recipient] / count,
-            edge_negative[sender, recipient],
-        )
-        for (sender, recipient), count in sorted(edge_replies.items())
-    )
-    return InteractionNetwork(len(materialized), MappingProxyType(summaries), edges)
+    accumulator = InteractionNetworkAccumulator(speaker_field=speaker_field)
+    for conversation in conversations:
+        accumulator.add(conversation)
+    return accumulator.finish()

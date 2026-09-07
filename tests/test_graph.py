@@ -3,7 +3,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from turnscope import Conversation, Utterance, interaction_edges, interaction_network, reply_forest
+from turnscope import (
+    Conversation,
+    InteractionNetworkAccumulator,
+    Utterance,
+    interaction_edges,
+    interaction_network,
+    reply_forest,
+)
 
 
 def message(id: str, parent: str | None = None, seconds: int = 0) -> Utterance:
@@ -128,3 +135,26 @@ def test_interaction_network_accepts_generators_and_validates_values() -> None:
         interaction_network([object()])  # type: ignore[list-item]
     with pytest.raises(ValueError, match="speaker"):
         interaction_network([Conversation("bad", [message("a")])], speaker_field="speaker")
+
+
+def test_interaction_network_accumulator_matches_batch_and_validates_configuration() -> None:
+    first = Conversation(
+        "first",
+        [
+            replace(message("a"), metadata={"speaker": "alice"}),
+            replace(message("b", "a", 10), metadata={"speaker": "bob"}),
+        ],
+    )
+    second = Conversation(
+        "second",
+        [
+            replace(message("x"), metadata={"speaker": "alice"}),
+            replace(message("y", "x", 20), metadata={"speaker": "bob"}),
+        ],
+    )
+    accumulator = InteractionNetworkAccumulator(speaker_field="speaker")
+    accumulator.add(first)
+    accumulator.add(second)
+    assert accumulator.finish() == interaction_network((first, second), speaker_field="speaker")
+    with pytest.raises(ValueError, match="speaker_field"):
+        InteractionNetworkAccumulator(speaker_field=" ")

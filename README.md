@@ -182,7 +182,9 @@ means the input or invocation could not be processed.
 the corpus and reports speaker activity, edge counts, conversation coverage, and
 signed latency diagnostics. Add `--field speaker_id` when metadata contains a
 stable identity rather than a role; `--output PATH` writes the deterministic JSON
-report.
+report. JSONL input is consumed incrementally through the same
+`InteractionNetworkAccumulator` used by the Python API; see
+[network streaming](docs/network-streaming.md).
 
 ## Design guarantees
 
