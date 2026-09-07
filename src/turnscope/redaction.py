@@ -71,32 +71,8 @@ def redact_conversations(
     output: list[Conversation] = []
     utterance_count = 0
     for conversation in conversations:
-        redacted: list[Utterance] = []
-        for utterance in conversation.utterances:
-            text = utterance.text
-            for kind in enabled:
-                pattern = _PATTERNS[kind]
-
-                def replace(match: re.Match[str], *, _kind: str = kind) -> str:
-                    value = match.group(0)
-                    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:10]
-                    counts[_kind] += 1
-                    return f"[REDACTED:{_kind}:{digest}]"
-
-                text = pattern.sub(replace, text)
-            redacted.append(
-                Utterance(
-                    id=utterance.id,
-                    role=utterance.role,
-                    text=text,
-                    timestamp=utterance.timestamp,
-                    reply_to=utterance.reply_to,
-                    token_count=utterance.token_count,
-                    metadata=utterance.metadata,
-                )
-            )
-        utterance_count += len(redacted)
-        output.append(Conversation(conversation.id, redacted, metadata=conversation.metadata))
+        output.append(_redact_one(conversation, enabled, counts))
+        utterance_count += len(conversation.utterances)
     report = RedactionReport(
         conversations=len(output),
         utterances=utterance_count,
@@ -112,5 +88,37 @@ def redact_stream(
 ) -> Iterator[Conversation]:
     """Yield redacted conversations when a report is not needed."""
 
-    redacted, _ = redact_conversations(conversations, policy=policy)
-    yield from redacted
+    active = policy or RedactionPolicy()
+    enabled = tuple(name for name in ("email", "phone", "api_key", "url") if getattr(active, name))
+    for conversation in conversations:
+        yield _redact_one(conversation, enabled, Counter())
+
+
+def _redact_one(
+    conversation: Conversation, enabled: tuple[str, ...], counts: Counter[str]
+) -> Conversation:
+    redacted: list[Utterance] = []
+    for utterance in conversation.utterances:
+        text = utterance.text
+        for kind in enabled:
+            pattern = _PATTERNS[kind]
+
+            def replace(match: re.Match[str], *, _kind: str = kind) -> str:
+                value = match.group(0)
+                digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:10]
+                counts[_kind] += 1
+                return f"[REDACTED:{_kind}:{digest}]"
+
+            text = pattern.sub(replace, text)
+        redacted.append(
+            Utterance(
+                id=utterance.id,
+                role=utterance.role,
+                text=text,
+                timestamp=utterance.timestamp,
+                reply_to=utterance.reply_to,
+                token_count=utterance.token_count,
+                metadata=utterance.metadata,
+            )
+        )
+    return Conversation(conversation.id, redacted, metadata=conversation.metadata)
