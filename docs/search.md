@@ -14,6 +14,16 @@ for hit in index.query("voltage stability", limit=5):
     print(hit.conversation_id, hit.utterance_id, hit.score, hit.matched_terms)
 ```
 
+Derived indexes can be cached without copying source text. The snapshot is
+canonical JSON and `save` returns its SHA-256 digest; `load` revalidates the
+schema and rebuilds posting lists before serving queries.
+
+```python
+digest = index.save("artifacts/search-index.json")
+restored = ConversationSearchIndex.load("artifacts/search-index.json")
+assert restored.query("voltage") == index.query("voltage")
+```
+
 This is a lexical diagnostic primitive, not a semantic embedding service. For
 large corpora, persist the input corpus and rebuild the index with a pinned
 tokenizer/version as part of the experiment manifest.

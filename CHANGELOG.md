@@ -10,6 +10,7 @@ All notable changes follow the principles of Keep a Changelog.
 - Iterative reply-forest analysis and explicit role/speaker interaction aggregation.
 - Fit/transform TF-IDF vectors and deterministic conversation/speaker feature aggregates.
 - Deterministic BM25-style conversation search with filtering and vocabulary diagnostics.
+- Versioned, deterministic search-index snapshots with digest-authenticated save/load support.
 
 ## [0.2.0] - 2026-08-31
 

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from types import MappingProxyType
 
 from .models import Conversation
@@ -132,6 +135,72 @@ class ConversationSearchIndex:
         return MappingProxyType(
             {term: len(postings) for term, postings in sorted(self._postings.items())}
         )
+
+    def save(self, path: str | Path) -> str:
+        """Persist the lexical index and return its SHA-256 snapshot digest.
+
+        The snapshot contains normalized tokens rather than the original
+        conversations, so it is safe to use as a derived cache.  JSON keys,
+        document ordering, and separators are pinned to make the digest
+        reproducible across processes and platforms.
+        """
+
+        destination = Path(path)
+        payload = {
+            "format": 1,
+            "documents": [
+                {"conversation_id": key[0], "utterance_id": key[1], "tokens": list(tokens)}
+                for key, tokens in sorted(self._documents.items())
+            ],
+        }
+        encoded = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(encoded + b"\n")
+        return hashlib.sha256(encoded + b"\n").hexdigest()
+
+    @classmethod
+    def load(cls, path: str | Path) -> ConversationSearchIndex:
+        """Load and validate a derived index snapshot produced by :meth:`save`."""
+
+        source = Path(path)
+        try:
+            raw = json.loads(source.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise ValueError(f"cannot read search index {source}: {error}") from error
+        if (
+            not isinstance(raw, dict)
+            or raw.get("format") != 1
+            or not isinstance(raw.get("documents"), list)
+        ):
+            raise ValueError("unsupported search index snapshot")
+        index = cls()
+        for position, item in enumerate(raw["documents"], start=1):
+            if not isinstance(item, dict):
+                raise ValueError(f"search index document {position} must be an object")
+            conversation_id = item.get("conversation_id")
+            utterance_id = item.get("utterance_id")
+            tokens = item.get("tokens")
+            if (
+                not isinstance(conversation_id, str)
+                or not conversation_id
+                or not isinstance(utterance_id, str)
+                or not utterance_id
+                or not isinstance(tokens, list)
+                or not all(isinstance(token, str) and token for token in tokens)
+            ):
+                raise ValueError(f"invalid search index document {position}")
+            key = (conversation_id, utterance_id)
+            if key in index._documents:
+                raise ValueError(f"duplicate search index document {key!r}")
+            index._documents[key] = tuple(tokens)
+            index._lengths[key] = len(tokens)
+            index._conversation_docs[conversation_id].add(key)
+            for token, count in Counter(tokens).items():
+                index._postings[token][key] = count
+        index._recompute_average()
+        return index
 
     def _recompute_average(self) -> None:
         self._average_length = (

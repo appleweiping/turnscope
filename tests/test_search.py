@@ -47,3 +47,29 @@ def test_filters_and_validation() -> None:
         index.query("alpha", b=2)
     with pytest.raises(TypeError, match="query"):
         index.query(1)  # type: ignore[arg-type]
+
+
+def test_snapshot_round_trip_is_deterministic(tmp_path) -> None:
+    index = ConversationSearchIndex(
+        [conversation("c1", [("u1", "alpha beta")]), conversation("c2", [("u2", "beta")])]
+    )
+    first = tmp_path / "one.json"
+    second = tmp_path / "nested" / "two.json"
+    digest = index.save(first)
+    assert len(digest) == 64
+    restored = ConversationSearchIndex.load(first)
+    assert restored.query("alpha beta") == index.query("alpha beta")
+    assert restored.terms() == index.terms()
+    assert restored.save(second) == digest
+    assert second.read_bytes() == first.read_bytes()
+
+
+def test_snapshot_rejects_duplicate_or_malformed_documents(tmp_path) -> None:
+    path = tmp_path / "bad.json"
+    path.write_text(
+        '{"documents":[{"conversation_id":"c","utterance_id":"u","tokens":["x"]},'
+        '{"conversation_id":"c","utterance_id":"u","tokens":["x"]}],"format":1}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="duplicate"):
+        ConversationSearchIndex.load(path)
