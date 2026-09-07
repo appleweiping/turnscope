@@ -171,24 +171,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         if args.command == "speaker-profile":
             profiles = corpus_speaker_profiles(conversations, field=args.field)
-            rendered = json.dumps(
-                [
-                    {
-                        "speaker": profile.speaker,
-                        "conversations": profile.conversations,
-                        "utterances": profile.utterances,
-                        "tokens": profile.tokens,
-                        "unique_tokens": profile.unique_tokens,
-                        "roles": dict(profile.roles),
-                        "replies_sent": profile.replies_sent,
-                        "replies_received": profile.replies_received,
-                    }
-                    for profile in profiles
-                ],
-                ensure_ascii=True,
-                allow_nan=False,
-                sort_keys=True,
-            ) + "\n"
+            rendered = (
+                json.dumps(
+                    [
+                        {
+                            "speaker": profile.speaker,
+                            "conversations": profile.conversations,
+                            "utterances": profile.utterances,
+                            "tokens": profile.tokens,
+                            "unique_tokens": profile.unique_tokens,
+                            "roles": dict(profile.roles),
+                            "replies_sent": profile.replies_sent,
+                            "replies_received": profile.replies_received,
+                        }
+                        for profile in profiles
+                    ],
+                    ensure_ascii=True,
+                    allow_nan=False,
+                    sort_keys=True,
+                )
+                + "\n"
+            )
             _write(rendered, args.output)
             return 0
         if args.command == "build":
