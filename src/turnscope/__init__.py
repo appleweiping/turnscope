@@ -12,6 +12,7 @@ from .adapters import (
 )
 from .audit import Auditor, default_auditor
 from .builder import ContextBuilder
+from .classifier import ClassifierState, ConversationClassifier
 from .corpus import CorpusStore
 from .graph import InteractionEdge, ReplyForest, interaction_edges, reply_forest
 from .io import iter_conversations, iter_path
@@ -41,9 +42,11 @@ __all__ = [
     "Auditor",
     "CallableTransformer",
     "ChatFormat",
+    "ClassifierState",
     "ContextBuilder",
     "ContextWindow",
     "Conversation",
+    "ConversationClassifier",
     "ConversationFeatures",
     "ConversationSearchIndex",
     "ConversationTransformer",
