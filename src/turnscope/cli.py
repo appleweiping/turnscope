@@ -34,7 +34,11 @@ from .redaction import RedactionPolicy, redact_conversations
 from .reporting import report_json, report_markdown, windows_json
 from .search import ConversationSearchIndex
 from .tabular import write_windows_csv
-from .transformers import corpus_speaker_profiles
+from .transformers import (
+    corpus_speaker_profiles,
+    default_coordination_categories,
+    linguistic_coordination,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -123,6 +127,14 @@ def _parser() -> argparse.ArgumentParser:
     network.add_argument("input", type=Path)
     network.add_argument("--field", help="metadata field containing a stable speaker identity")
     network.add_argument("--output", "-o", type=Path)
+    coordination = subcommands.add_parser(
+        "coordination", help="measure directional function-word coordination"
+    )
+    coordination.add_argument("input", type=Path)
+    coordination.add_argument(
+        "--categories", type=Path, help="JSON object mapping category names to word arrays"
+    )
+    coordination.add_argument("--output", "-o", type=Path)
     classify = subcommands.add_parser(
         "classify", help="fit and apply a conversation text classifier"
     )
@@ -246,6 +258,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "tabular",
             "speaker-profile",
             "network",
+            "coordination",
         } and _paths_collide(args.input, args.output):
             raise ValueError("output path must differ from the input path")
         if args.command == "network":
@@ -255,6 +268,31 @@ def main(argv: Sequence[str] | None = None) -> int:
                     network_report.to_dict(), ensure_ascii=True, allow_nan=False, sort_keys=True
                 )
                 + "\n",
+                args.output,
+            )
+            return 0
+        if args.command == "coordination":
+            categories = default_coordination_categories()
+            if args.categories is not None:
+                loaded = json.loads(args.categories.read_text(encoding="utf-8"))
+                if not isinstance(loaded, dict) or any(
+                    not isinstance(name, str) or not isinstance(words, list)
+                    for name, words in loaded.items()
+                ):
+                    raise ValueError("categories must be an object mapping names to word arrays")
+                categories = loaded
+            reports = [
+                {
+                    "conversation_id": conversation.id,
+                    "scores": [
+                        score.to_dict()
+                        for score in linguistic_coordination(conversation, categories)
+                    ],
+                }
+                for conversation in iter_path(args.input)
+            ]
+            _write(
+                json.dumps(reports, ensure_ascii=True, allow_nan=False, sort_keys=True) + "\n",
                 args.output,
             )
             return 0

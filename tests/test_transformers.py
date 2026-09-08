@@ -8,6 +8,7 @@ from turnscope import (
     Utterance,
     conversation_features,
     corpus_speaker_profiles,
+    default_coordination_categories,
     linguistic_coordination,
     linguistic_diversity,
     speaker_profiles,
@@ -112,6 +113,15 @@ def test_linguistic_coordination_is_directional_and_retains_no_evidence() -> Non
     assert by_key[("bob", "alice", "cognition")].score is None
     with pytest.raises(ValueError, match="non-empty"):
         linguistic_coordination(conversation, {})
+
+
+def test_default_coordination_categories_are_json_safe() -> None:
+    categories = default_coordination_categories()
+    assert categories["articles"] == ["a", "an", "the"]
+    score = linguistic_coordination(
+        convo("default", ["the plan", "the result"], ["a", "b"]), categories
+    )[0]
+    assert score.to_dict()["category"] == "articles"
 
 
 def test_linguistic_diversity_reports_ratio_and_entropy() -> None:

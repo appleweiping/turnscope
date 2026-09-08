@@ -25,6 +25,7 @@ from .policies import (
 from .reporting import windows_json
 from .search import ConversationSearchIndex
 from .tabular import window_rows
+from .transformers import default_coordination_categories, linguistic_coordination
 
 
 class TurnScopeService:
@@ -104,7 +105,31 @@ class TurnScopeService:
                 raise ValueError("speaker_field must be a non-empty string when supplied")
             network_report = interaction_network(conversations, speaker_field=speaker_field)
             return {"operation": operation, "network": network_report.to_dict()}
-        raise ValueError("operation must be audit, build, tabular, search, or network")
+        if operation == "coordination":
+            categories = request.get("categories", default_coordination_categories())
+            if not isinstance(categories, Mapping):
+                raise ValueError("categories must be an object mapping names to word arrays")
+            if any(
+                not isinstance(name, str) or not isinstance(words, list)
+                for name, words in categories.items()
+            ):
+                raise ValueError("categories must map strings to arrays")
+            return {
+                "operation": operation,
+                "reports": [
+                    {
+                        "conversation_id": conversation.id,
+                        "scores": [
+                            score.to_dict()
+                            for score in linguistic_coordination(conversation, categories)
+                        ],
+                    }
+                    for conversation in conversations
+                ],
+            }
+        raise ValueError(
+            "operation must be audit, build, tabular, search, network, or coordination"
+        )
 
 
 def create_server(

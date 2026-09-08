@@ -183,6 +183,40 @@ def test_cli_network_reports_cross_conversation_edges(tmp_path, capsys) -> None:
     assert payload["speakers"][0]["speaker"] == "alice"
 
 
+def test_cli_coordination_reports_directional_scores(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
+    source = tmp_path / "conversation.json"
+    source.write_text(
+        json.dumps(
+            {
+                "id": "coord",
+                "utterances": [
+                    {
+                        "id": "a",
+                        "role": "alice",
+                        "text": "the plan",
+                        "timestamp": "2026-01-01T00:00:00Z",
+                    },
+                    {
+                        "id": "b",
+                        "role": "bob",
+                        "text": "the result",
+                        "timestamp": "2026-01-01T00:00:01Z",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert main(["coordination", str(source)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    article = next(
+        item
+        for item in payload[0]["scores"]
+        if item["category"] == "articles" and item["source"] == "alice"
+    )
+    assert article["score"] == 1.0
+
+
 def test_cli_corpus_export_round_trips_and_resumes(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
     source = tmp_path / "conversations.jsonl"
     source.write_text(

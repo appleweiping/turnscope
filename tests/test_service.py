@@ -45,8 +45,7 @@ def test_service_build_tabular_audit_and_search(tmp_path) -> None:  # type: igno
     network = service.dispatch({"operation": "network", "input": str(source)})["network"]
     assert network["metrics"]["reply_count"] == 1
     assert any(
-        edge["sender"] == "assistant" and edge["recipient"] == "user"
-        for edge in network["edges"]
+        edge["sender"] == "assistant" and edge["recipient"] == "user" for edge in network["edges"]
     )
     try:
         service.dispatch({"operation": "network", "input": str(source), "speaker_field": ""})
@@ -54,6 +53,9 @@ def test_service_build_tabular_audit_and_search(tmp_path) -> None:  # type: igno
         assert "speaker_field" in str(error)
     else:
         raise AssertionError("empty speaker_field should be rejected")
+    coordination = service.dispatch({"operation": "coordination", "input": str(source)})
+    assert coordination["reports"][0]["conversation_id"] == "demo"
+    assert any(item["category"] == "auxiliaries" for item in coordination["reports"][0]["scores"])
 
 
 def test_service_http_dispatch(tmp_path) -> None:  # type: ignore[no-untyped-def]

@@ -66,6 +66,17 @@ available. Duplicate conversation IDs and missing identities fail explicitly.
 The same analysis is available as `turnscope speaker-profile DATASET`, which
 emits deterministic JSON and accepts `--field` for metadata-backed identities.
 
+## Linguistic coordination
+
+`linguistic_coordination(conversation, categories)` measures directional
+function-word coordination for adjacent turns by different roles. The returned
+`CoordinationScore` values retain conditioned and coordinated turn counts, so a
+small sample is not mistaken for a strong estimate; `None` means the source
+provided no evidence for that category. `default_coordination_categories()`
+provides a dependency-free starter vocabulary. The equivalent CLI command is
+`turnscope coordination DATASET`, and the local service exposes the same
+per-conversation reports through the `coordination` operation.
+
 ## Audit
 
 `Auditor.audit()` now consumes the conversation iterable in one pass instead of tupleizing it. The returned

@@ -13,6 +13,7 @@ All notable changes follow the principles of Keep a Changelog.
 
 - Add a strict loopback JSON/HTTP service for audit, build, tabular, and search operations.
 - Expose deterministic interaction-network analysis through the local JSON/HTTP service.
+- Add directional linguistic-coordination reports to the Python API, CLI, and local service.
 
 - Add deterministic context-window CSV exports through `tabular` and `windows_csv`, with opt-in text columns.
 

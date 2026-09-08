@@ -320,6 +320,30 @@ class CoordinationScore:
     conditioned_turns: int
     coordinated_turns: int
 
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-safe, stable representation of the score."""
+
+        return {
+            "source": self.source,
+            "target": self.target,
+            "category": self.category,
+            "score": self.score,
+            "conditioned_turns": self.conditioned_turns,
+            "coordinated_turns": self.coordinated_turns,
+        }
+
+
+def default_coordination_categories() -> dict[str, list[str]]:
+    """Return a small dependency-free function-word category vocabulary."""
+
+    return {
+        "articles": ["a", "an", "the"],
+        "auxiliaries": ["am", "are", "be", "been", "do", "has", "is", "was", "were"],
+        "conjunctions": ["and", "but", "or", "so", "because"],
+        "pronouns": ["i", "me", "my", "we", "us", "you", "your", "they", "them"],
+        "negations": ["no", "not", "never", "n't"],
+    }
+
 
 def linguistic_coordination(
     conversation: Conversation,
