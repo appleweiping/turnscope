@@ -43,6 +43,7 @@ from .policies import (
 from .profiles import Profile, get_profile, load_profiles
 from .redaction import RedactionPolicy, RedactionReport, redact_conversations, redact_stream
 from .search import ConversationSearchIndex, SearchHit
+from .service import TurnScopeService, create_server
 from .tabular import window_rows, windows_csv, write_windows_csv
 from .transformers import (
     ConversationFeatures,
@@ -100,6 +101,7 @@ __all__ = [
     "TimeWindowPolicy",
     "TokenBudgetPolicy",
     "TokenCounter",
+    "TurnScopeService",
     "TurnWindowPolicy",
     "Utf8ByteTokenCounter",
     "Utterance",
@@ -110,6 +112,7 @@ __all__ = [
     "adapt_sharegpt",
     "conversation_features",
     "corpus_speaker_profiles",
+    "create_server",
     "default_auditor",
     "get_profile",
     "interaction_edges",
