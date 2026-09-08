@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal, TextIO
@@ -11,7 +11,7 @@ from typing import Any, Literal, TextIO
 from .io import DataFormatError, _validate_json_value, parse_json_value
 from .models import Conversation, JsonValue, Utterance
 
-ChatFormat = Literal["openai", "anthropic", "sharegpt"]
+ChatFormat = Literal["openai", "anthropic", "sharegpt", "convokit"]
 _SYNTHETIC_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
@@ -176,6 +176,7 @@ def _utterance(
     role: str,
     text: str,
     source_format: ChatFormat,
+    extra_metadata: Mapping[str, JsonValue] | None = None,
 ) -> Utterance:
     item_id = (
         _nonempty_string(data["id"], f"{location}.id")
@@ -185,6 +186,8 @@ def _utterance(
     metadata: dict[str, JsonValue] = {"source_format": source_format, "source_index": index}
     if "name" in data:
         metadata["name"] = _nonempty_string(data["name"], f"{location}.name")
+    if extra_metadata:
+        metadata.update(extra_metadata)
     try:
         return Utterance(
             id=item_id,
@@ -409,6 +412,113 @@ def adapt_sharegpt(
     return Conversation(item_id, utterances, _adapter_metadata("sharegpt", warnings))
 
 
+def adapt_convokit(
+    value: Any, *, conversation_id: str | None = None, location: str = "convokit"
+) -> Conversation:
+    """Adapt a ConvoKit utterance collection into one validated conversation.
+
+    ConvoKit stores utterances as JSONL records with ``speaker``,
+    ``conversation_id``, ``reply_to``, ``timestamp``, ``text``, and optional
+    ``meta`` fields.  TurnScope keeps speaker identity in metadata and uses a
+    deterministic ``speaker:<id>`` role because ConvoKit does not impose a
+    user/assistant role vocabulary.
+    """
+
+    if isinstance(value, list):
+        data: dict[str, Any] = {}
+        raw_utterances = value
+    else:
+        data = _object(value, location)
+        raw_utterances = _array(data.get("utterances"), f"{location}.utterances")
+    utterances_data = [
+        _object(item, f"{location}.utterances[{index}]")
+        for index, item in enumerate(raw_utterances)
+    ]
+    inferred_ids = {
+        _nonempty_string(item["conversation_id"], f"{location}.utterances[{index}].conversation_id")
+        for index, item in enumerate(utterances_data)
+        if "conversation_id" in item and item["conversation_id"] is not None
+    }
+    if len(inferred_ids) > 1:
+        raise DataFormatError(location, "utterances contain conflicting conversation_id fields")
+    selected_data = dict(data)
+    if not any(key in selected_data for key in ("id", "conversation_id")) and inferred_ids:
+        selected_data["conversation_id"] = next(iter(inferred_ids))
+    item_id = _conversation_id(selected_data, conversation_id, "conversation", location)
+    warnings: list[str] = []
+    _warn_unrepresented(
+        data,
+        {"id", "conversation_id", "utterances", "meta", "speakers"},
+        location,
+        warnings,
+    )
+    converted: list[Utterance] = []
+    for index, utterance in enumerate(utterances_data):
+        utterance_location = f"{location}.utterances[{index}]"
+        source_conversation = utterance.get("conversation_id")
+        if source_conversation is not None:
+            source_conversation = _nonempty_string(
+                source_conversation, f"{utterance_location}.conversation_id"
+            )
+            if source_conversation != item_id:
+                raise DataFormatError(
+                    f"{utterance_location}.conversation_id",
+                    f"does not match conversation {item_id!r}",
+                )
+        speaker = _nonempty_string(utterance.get("speaker"), f"{utterance_location}.speaker")
+        role = _optional_string(utterance, "role", utterance_location) or f"speaker:{speaker}"
+        text = _text_string(utterance.get("text"), f"{utterance_location}.text")
+        extra_metadata: dict[str, JsonValue] = {"speaker": speaker}
+        if "meta" in utterance:
+            utterance_meta = utterance["meta"]
+            if not isinstance(utterance_meta, dict):
+                raise DataFormatError(f"{utterance_location}.meta", "expected an object")
+            extra_metadata["convokit_meta"] = utterance_meta
+        _warn_unrepresented(
+            utterance,
+            {
+                "conversation_id",
+                "created_at",
+                "id",
+                "meta",
+                "name",
+                "reply_to",
+                "role",
+                "speaker",
+                "text",
+                "timestamp",
+                "token_count",
+            },
+            utterance_location,
+            warnings,
+        )
+        normalized = dict(utterance)
+        if normalized.get("timestamp") is None:
+            normalized.pop("timestamp", None)
+        if normalized.get("created_at") is None:
+            normalized.pop("created_at", None)
+        converted.append(
+            _utterance(
+                normalized,
+                location=utterance_location,
+                conversation_id=item_id,
+                index=index,
+                role=role,
+                text=text,
+                source_format="convokit",
+                extra_metadata=extra_metadata,
+            )
+        )
+    metadata = _adapter_metadata("convokit", warnings)
+    for key in ("meta", "speakers"):
+        if key in data:
+            if not isinstance(data[key], dict):
+                raise DataFormatError(f"{location}.{key}", "expected an object")
+            metadata[f"convokit_{key}"] = data[key]
+    _validate_json_value(value, location)
+    return Conversation(item_id, converted, metadata)
+
+
 def adapt_conversation(
     value: Any,
     *,
@@ -424,7 +534,9 @@ def adapt_conversation(
         return adapt_anthropic(value, conversation_id=conversation_id, location=selected_location)
     if format == "sharegpt":
         return adapt_sharegpt(value, conversation_id=conversation_id, location=selected_location)
-    raise ValueError("format must be 'openai', 'anthropic', or 'sharegpt'")
+    if format == "convokit":
+        return adapt_convokit(value, conversation_id=conversation_id, location=selected_location)
+    raise ValueError("format must be 'openai', 'anthropic', 'sharegpt', or 'convokit'")
 
 
 def iter_adapted_conversations(
@@ -451,6 +563,9 @@ def iter_adapted_jsonl(
 ) -> Iterator[Conversation]:
     """Parse and adapt JSONL incrementally with physical line locations."""
     _nonempty_string(id_prefix, "id_prefix")
+    if format == "convokit":
+        yield from iter_adapted_convokit_jsonl(stream, id_prefix=id_prefix)
+        return
     record_index = 0
     for line_number, line in enumerate(stream, 1):
         if not line.strip():
@@ -473,3 +588,32 @@ def iter_adapted_path(
     """Stream an adapter-format JSONL file from disk."""
     with Path(path).open(encoding="utf-8") as stream:
         yield from iter_adapted_jsonl(stream, format=format, id_prefix=id_prefix)
+
+
+def iter_adapted_convokit_jsonl(
+    stream: TextIO, *, id_prefix: str = "conversation"
+) -> Iterator[Conversation]:
+    """Group ConvoKit ``utterances.jsonl`` rows by conversation ID.
+
+    Input rows may be interleaved; grouping preserves first-seen conversation
+    order and source order within each conversation.
+    """
+
+    _nonempty_string(id_prefix, "id_prefix")
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for line_number, line in enumerate(stream, 1):
+        if not line.strip():
+            continue
+        location = f"line {line_number}"
+        value = _object(parse_json_value(line, location=location), location)
+        raw_id = value.get("conversation_id")
+        if raw_id is None:
+            conversation_key = f"{id_prefix}-{len(groups)}"
+        else:
+            conversation_key = _nonempty_string(raw_id, f"{location}.conversation_id")
+        groups.setdefault(conversation_key, []).append(value)
+    for conversation_key, utterances in groups.items():
+        yield adapt_convokit(
+            {"conversation_id": conversation_key, "utterances": utterances},
+            location=f"conversation {conversation_key}",
+        )

@@ -4,6 +4,10 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add a strict ConvoKit adapter for `utterances.jsonl`-style records, including
+  speaker identity, reply links, metadata, timestamps, and grouped streaming
+  ingestion.
+
 - Add lazy optional `TiktokenTokenCounter` and `HuggingFaceTokenCounter`
   integrations for exact model-token accounting, including profile support.
 

@@ -1,6 +1,7 @@
 # Chat format adapters
 
-TurnScope never guesses an input dialect. Call `adapt_openai`, `adapt_anthropic`, or `adapt_sharegpt`, or pass an
+TurnScope never guesses an input dialect. Call `adapt_openai`, `adapt_anthropic`, `adapt_sharegpt`, or
+`adapt_convokit`, or pass an
 explicit format to `adapt_conversation`. Every consumed field is type-checked and errors identify the source path, for
 example `openai.messages[2].content[0].text` or `line 17.conversations[1].from`.
 
@@ -22,6 +23,17 @@ blocks are currently outside the adapter's text-only contract and produce locate
 
 The adapter reads the conventional `conversations` array. It maps `human`/`user` to `user`, `gpt`/`assistant` to
 `assistant`, `function`/`tool` to `tool`, and preserves `system`. Unknown role labels fail explicitly.
+
+## ConvoKit
+
+`adapt_convokit` accepts a mapping with an `utterances` array (or a bare
+utterance array). Each record requires a non-empty `speaker` and `text`; the
+source `conversation_id`, `id`, `reply_to`, `timestamp`, `token_count`, and
+`meta` fields are validated and preserved. Because ConvoKit does not define a
+user/assistant role vocabulary, the adapter uses `speaker:<speaker-id>` as the
+role and stores the speaker and metadata explicitly. `iter_adapted_convokit_jsonl`
+groups interleaved `utterances.jsonl` rows by conversation while preserving
+first-seen conversation order and within-conversation source order.
 
 ## IDs, time, and provenance
 

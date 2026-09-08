@@ -7,9 +7,11 @@ import pytest
 from turnscope.adapters import (
     adapt_anthropic,
     adapt_conversation,
+    adapt_convokit,
     adapt_openai,
     adapt_sharegpt,
     iter_adapted_conversations,
+    iter_adapted_convokit_jsonl,
     iter_adapted_jsonl,
     iter_adapted_path,
 )
@@ -164,6 +166,63 @@ def test_sharegpt_adapter_maps_documented_roles() -> None:
     )
     assert [item.role for item in result.utterances] == ["user", "assistant", "tool"]
     assert result.metadata == {"source_format": "sharegpt"}
+
+
+def test_convokit_adapter_preserves_speakers_reply_graph_and_metadata() -> None:
+    result = adapt_convokit(
+        {
+            "conversation_id": "thread-1",
+            "meta": {"dataset": "demo"},
+            "speakers": {"alice": {"group": "a"}},
+            "utterances": [
+                {
+                    "id": "u1",
+                    "speaker": "alice",
+                    "conversation_id": "thread-1",
+                    "reply_to": None,
+                    "timestamp": None,
+                    "text": "Hello",
+                    "meta": {"turn": 1},
+                },
+                {
+                    "id": "u2",
+                    "speaker": "bob",
+                    "conversation_id": "thread-1",
+                    "reply_to": "u1",
+                    "text": "Hi",
+                },
+            ],
+        }
+    )
+    assert result.id == "thread-1"
+    assert [item.role for item in result.utterances] == ["speaker:alice", "speaker:bob"]
+    assert result.utterances[0].metadata["speaker"] == "alice"
+    assert result.utterances[0].metadata["convokit_meta"] == {"turn": 1}
+    assert result.utterances[1].reply_to == "u1"
+    assert result.metadata["convokit_meta"] == {"dataset": "demo"}
+    assert result.metadata["convokit_speakers"] == {"alice": {"group": "a"}}
+
+
+def test_convokit_jsonl_adapter_groups_interleaved_rows() -> None:
+    stream = io.StringIO(
+        "\n".join(
+            [
+                json.dumps({"id": "a1", "conversation_id": "a", "speaker": "x", "text": "A1"}),
+                json.dumps({"id": "b1", "conversation_id": "b", "speaker": "y", "text": "B1"}),
+                json.dumps({"id": "a2", "conversation_id": "a", "speaker": "x", "text": "A2"}),
+            ]
+        )
+        + "\n"
+    )
+    conversations = list(iter_adapted_convokit_jsonl(stream))
+    assert [item.id for item in conversations] == ["a", "b"]
+    assert [item.id for item in conversations[0].utterances] == ["a1", "a2"]
+    assert [
+        item.id for item in iter_adapted_jsonl(io.StringIO(stream.getvalue()), format="convokit")
+    ] == [
+        "a",
+        "b",
+    ]
 
 
 @pytest.mark.parametrize(

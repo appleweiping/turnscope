@@ -19,7 +19,7 @@ separate, explicit, and dependency-free at runtime.
 ## Features
 
 - Lazy, strict JSONL parsing with paths, physical line numbers, and duplicate-key checks.
-- Located adapters for OpenAI, Anthropic, and ShareGPT chat records.
+- Located adapters for OpenAI, Anthropic, ShareGPT, and ConvoKit chat records.
 - Frozen core dataclass fields with copied, intentionally mutable metadata mappings.
 - Turn-count, token-budget, elapsed-time, and reply-chain window policies.
 - Output-sensitive built-in policy implementations for long conversations.
