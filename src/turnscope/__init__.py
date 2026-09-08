@@ -43,6 +43,7 @@ from .policies import (
 from .profiles import Profile, get_profile, load_profiles
 from .redaction import RedactionPolicy, RedactionReport, redact_conversations, redact_stream
 from .search import ConversationSearchIndex, SearchHit
+from .tabular import window_rows, windows_csv, write_windows_csv
 from .transformers import (
     ConversationFeatures,
     CoordinationScore,
@@ -128,6 +129,9 @@ __all__ = [
     "redact_stream",
     "reply_forest",
     "speaker_profiles",
+    "window_rows",
+    "windows_csv",
+    "write_windows_csv",
 ]
 
 __version__ = "0.2.0"

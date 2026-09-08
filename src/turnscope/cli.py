@@ -33,6 +33,7 @@ from .profiles import get_profile
 from .redaction import RedactionPolicy, redact_conversations
 from .reporting import report_json, report_markdown, windows_json
 from .search import ConversationSearchIndex
+from .tabular import write_windows_csv
 from .transformers import corpus_speaker_profiles
 
 
@@ -49,6 +50,24 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--config", type=Path, help="JSON file containing named profiles")
     build.add_argument("--profile", default="default", help="profile name in --config")
     build.add_argument("--tokenizer-plugin", help="installed entry-point tokenizer name")
+    tabular = subcommands.add_parser(
+        "tabular", help="export deterministic context-window rows as CSV"
+    )
+    tabular.add_argument("input", type=Path)
+    tabular.add_argument("--output", "-o", type=Path, required=True)
+    tabular.add_argument(
+        "--policy", choices=("turn", "token", "time", "reply-chain"), default="turn"
+    )
+    tabular.add_argument("--value", type=int, help="turns, tokens, seconds, or reply depth")
+    tabular.add_argument("--target", action="append", help="only export the specified target ID")
+    tabular.add_argument("--config", type=Path, help="JSON file containing named profiles")
+    tabular.add_argument("--profile", default="default", help="profile name in --config")
+    tabular.add_argument("--tokenizer-plugin", help="installed entry-point tokenizer name")
+    tabular.add_argument(
+        "--include-text",
+        action="store_true",
+        help="include target and context text (excluded by default for safer exports)",
+    )
 
     audit = subcommands.add_parser("audit", help="audit conversation reliability")
     audit.add_argument("input", type=Path)
@@ -221,9 +240,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             )
             return 0
-        if args.command in {"build", "audit", "speaker-profile", "network"} and _paths_collide(
-            args.input, args.output
-        ):
+        if args.command in {
+            "build",
+            "audit",
+            "tabular",
+            "speaker-profile",
+            "network",
+        } and _paths_collide(args.input, args.output):
             raise ValueError("output path must differ from the input path")
         if args.command == "network":
             network_report = interaction_network(iter_path(args.input), speaker_field=args.field)
@@ -236,6 +259,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 0
         conversations = load_path(args.input)
+        if args.command == "tabular":
+            profile = get_profile(args.config, args.profile) if args.config else None
+            if profile is not None and (args.policy != "turn" or args.value is not None):
+                raise ValueError("--config cannot be combined with --policy or --value")
+            if profile is not None and args.tokenizer_plugin is not None:
+                raise ValueError("--config cannot be combined with --tokenizer-plugin")
+            policy = profile.policy if profile is not None else _policy(args.policy, args.value)
+            counter = (
+                load_tokenizer(args.tokenizer_plugin)
+                if args.tokenizer_plugin is not None
+                else (profile.token_counter if profile is not None else None)
+            )
+            windows = _build_windows(conversations, policy, args.target, counter)
+            write_windows_csv(windows, args.output, include_text=args.include_text)
+            return 0
         if args.command == "search":
             hits = ConversationSearchIndex(conversations).query(
                 args.query,

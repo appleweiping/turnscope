@@ -28,6 +28,7 @@ separate, explicit, and dependency-free at runtime.
 - A typed streaming Python API, two deterministic token counters, and `turnscope build` / `turnscope audit` commands.
 - A conservative pattern-based [redaction workflow](docs/redaction.md) for sanitized exports.
 - Deterministic behavior: input order is preserved, ties are not silently reordered, and whole messages are selected.
+- Deterministic CSV export of context-window metadata, with text excluded by default for safer tabular workflows.
 
 ```mermaid
 flowchart LR
@@ -218,8 +219,9 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 
 ## Roadmap
 
-- Optional integrations for exact model tokenizers and tabular exports.
-- A documented plugin registry for external rules and tokenizer integrations.
+- Optional integrations for exact model tokenizers remain future work.
+- A documented plugin registry for external rules and tokenizer integrations is available through the `plugins` command.
+- Tabular context-window export is available through the `tabular` command and `windows_csv` API.
 
 Named JSON profiles are available today through the build and audit commands;
 see [profiles](docs/profiles.md).

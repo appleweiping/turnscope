@@ -4,6 +4,8 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add deterministic context-window CSV exports through `tabular` and `windows_csv`, with opt-in text columns.
+
 - Add opt-in packaging entry points for external tokenizers and audit rules,
   with a discovery CLI and strict plugin contracts.
 
