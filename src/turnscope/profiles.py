@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from .policies import (
+    HuggingFaceTokenCounter,
     ReplyChainPolicy,
+    TiktokenTokenCounter,
     TimeWindowPolicy,
     TokenBudgetPolicy,
     TokenCounter,
@@ -84,6 +86,14 @@ def _profile(name: str, raw: Any) -> Profile:
         counter: TokenCounter = WhitespaceTokenCounter()
     elif counter_name == "utf8-byte":
         counter = Utf8ByteTokenCounter(policy_value.get("bytes_per_token", 4))
+    elif counter_name == "tiktoken":
+        counter = TiktokenTokenCounter(policy_value.get("encoding", "cl100k_base"))
+    elif counter_name == "huggingface":
+        counter = HuggingFaceTokenCounter(
+            policy_value.get("model", ""),
+            local_files_only=policy_value.get("local_files_only", True),
+            revision=policy_value.get("revision", "main"),
+        )
     else:
         raise ValueError(f"profile {name!r} has unsupported token_counter")
     policy_kind = policy_value.get("kind", "turn")

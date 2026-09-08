@@ -43,9 +43,17 @@ given string. Supplied utterance `token_count` values still take precedence.
 
 - `WhitespaceTokenCounter` counts Unicode-whitespace-delimited runs.
 - `Utf8ByteTokenCounter(bytes_per_token=4)` returns the ceiling of UTF-8 byte length divided by a fixed positive value.
+- `TiktokenTokenCounter(encoding="cl100k_base")` uses the optional `tiktoken`
+  package and an exact named encoding.
+- `HuggingFaceTokenCounter(model, local_files_only=True, revision="main")` uses
+  an optional fast Transformers tokenizer; local-only loading is the safe
+  default. Pin `revision` to a model commit for reproducible remote loads.
 - `whitespace_tokens` remains the v0.1-compatible function form.
 
-Neither implementation claims model-tokenizer equivalence. Pass a custom callable for exact model accounting.
+The model-tokenizer counters defer optional imports until first use and cache
+loaded encoders. Their package/model versions are part of your experiment
+environment, so record them in an audit manifest when exact reproducibility is
+required. Pass a custom callable for other tokenizer libraries.
 
 ## Corpus-wide speaker profiles
 

@@ -7,12 +7,14 @@ binds to loopback by default and accepts JSON `POST /v1/dispatch` requests.
 ```python
 from turnscope import TurnScopeService
 
-result = TurnScopeService().dispatch({
-    "operation": "build",
-    "input": "examples/conversations.json",
-    "policy": "turn",
-    "value": 2,
-})
+result = TurnScopeService().dispatch(
+    {
+        "operation": "build",
+        "input": "examples/conversations.json",
+        "policy": "turn",
+        "value": 2,
+    }
+)
 ```
 
 Supported operations are `audit`, `build`, `tabular`, and `search`. Paths are

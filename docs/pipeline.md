@@ -8,10 +8,12 @@ conversations.
 ```python
 from turnscope import CallableTransformer, FeaturePipeline, TfidfVectorizer, conversation_features
 
-pipeline = FeaturePipeline((
-    ("tfidf", TfidfVectorizer(min_document_frequency=2)),
-    ("counts", CallableTransformer(conversation_features)),
-))
+pipeline = FeaturePipeline(
+    (
+        ("tfidf", TfidfVectorizer(min_document_frequency=2)),
+        ("counts", CallableTransformer(conversation_features)),
+    )
+)
 features = pipeline.fit_transform(conversations)
 print(features[0].digest())
 ```

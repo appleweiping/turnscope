@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 import pytest
 
 from turnscope import ContextBuilder, Conversation, Utterance
-from turnscope.policies import TokenBudgetPolicy, Utf8ByteTokenCounter
+from turnscope.policies import (
+    HuggingFaceTokenCounter,
+    TiktokenTokenCounter,
+    TokenBudgetPolicy,
+    Utf8ByteTokenCounter,
+)
 from turnscope.profiles import get_profile, load_profiles
 
 
@@ -43,6 +48,46 @@ def test_named_profiles_load_policy_counter_and_audit_budget(tmp_path) -> None: 
         ContextBuilder(profile.policy, profile.token_counter).build(conversation)[0].token_total
         == 0
     )
+
+
+def test_profiles_support_optional_model_tokenizers(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    path = tmp_path / "tokenizers.json"
+    path.write_text(
+        json.dumps(
+            {
+                "profiles": {
+                    "tiktoken": {"policy": {"kind": "token", "token_counter": "tiktoken"}},
+                    "hf": {
+                        "policy": {
+                            "kind": "token",
+                            "token_counter": "huggingface",
+                            "model": "distilbert-base-uncased",
+                            "local_files_only": True,
+                            "revision": "4f7d3b6",
+                        }
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    profiles = load_profiles(path)
+    assert isinstance(profiles["tiktoken"].token_counter, TiktokenTokenCounter)
+    assert isinstance(profiles["hf"].token_counter, HuggingFaceTokenCounter)
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: TiktokenTokenCounter(""),
+        lambda: HuggingFaceTokenCounter(""),
+        lambda: HuggingFaceTokenCounter("model", local_files_only=1),
+        lambda: HuggingFaceTokenCounter("model", revision=""),
+    ],
+)
+def test_optional_tokenizer_configuration_is_validated(factory) -> None:  # type: ignore[no-untyped-def]
+    with pytest.raises(ValueError):
+        factory()
 
 
 @pytest.mark.parametrize(

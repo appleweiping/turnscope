@@ -219,7 +219,8 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 
 ## Roadmap
 
-- Optional integrations for exact model tokenizers remain future work.
+- Optional exact model-tokenizer integrations are available through the
+  `tiktoken` and `huggingface` counters; their dependencies are loaded lazily.
 - A documented plugin registry for external rules and tokenizer integrations is available through the `plugins` command.
 - Tabular context-window export is available through the `tabular` command and `windows_csv` API.
 - A loopback JSON service is available through `TurnScopeService` and `create_server` for local pipelines.

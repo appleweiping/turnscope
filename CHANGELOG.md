@@ -4,6 +4,9 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add lazy optional `TiktokenTokenCounter` and `HuggingFaceTokenCounter`
+  integrations for exact model-token accounting, including profile support.
+
 - Add a strict loopback JSON/HTTP service for audit, build, tabular, and search operations.
 
 - Add deterministic context-window CSV exports through `tabular` and `windows_csv`, with opt-in text columns.

@@ -26,7 +26,12 @@ turnscope audit conversations.jsonl --config profiles.json --profile support
 ```
 
 Supported policy kinds are `turn`, `token`, `time`, and `reply-chain`; token
-profiles may select `whitespace` or the deterministic `utf8-byte` counter.
+profiles may select `whitespace`, deterministic `utf8-byte`, optional
+`tiktoken`, or optional `huggingface` counters. A tiktoken profile may set
+`encoding`; a Hugging Face profile must set `model` and may set
+`local_files_only` (default `true`) and `revision` (default `main`). Pin
+`revision` to a model commit for reproducible remote loads. Optional packages
+are imported only when the counter is called.
 Unknown fields, duplicate JSON keys, invalid values, and unknown profile names
 are rejected before any output is written. CLI flags remain available for
 one-off invocations and cannot be mixed with profile-owned settings.

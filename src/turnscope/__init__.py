@@ -32,7 +32,9 @@ from .models import AuditReport, ContextWindow, Conversation, Issue, Severity, U
 from .pipeline import CallableTransformer, ConversationTransformer, FeaturePipeline, FeatureRecord
 from .plugins import PluginInfo, list_plugins, load_rule, load_tokenizer
 from .policies import (
+    HuggingFaceTokenCounter,
     ReplyChainPolicy,
+    TiktokenTokenCounter,
     TimeWindowPolicy,
     TokenBudgetPolicy,
     TokenCounter,
@@ -79,6 +81,7 @@ __all__ = [
     "DiversityProfile",
     "FeaturePipeline",
     "FeatureRecord",
+    "HuggingFaceTokenCounter",
     "InteractionEdge",
     "InteractionNetwork",
     "InteractionNetworkAccumulator",
@@ -98,6 +101,7 @@ __all__ = [
     "SpeakerSummary",
     "TfidfState",
     "TfidfVectorizer",
+    "TiktokenTokenCounter",
     "TimeWindowPolicy",
     "TokenBudgetPolicy",
     "TokenCounter",

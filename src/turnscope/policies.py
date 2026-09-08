@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Protocol, runtime_checkable
+from functools import lru_cache
+from typing import Any, Protocol, runtime_checkable
 
 from .models import Utterance
 
@@ -50,6 +51,76 @@ class Utf8ByteTokenCounter:
     def __call__(self, text: str) -> int:
         byte_count = len(text.encode("utf-8"))
         return (byte_count + self.bytes_per_token - 1) // self.bytes_per_token
+
+
+@dataclass(frozen=True, slots=True)
+class TiktokenTokenCounter:
+    """Count tokens with an optional ``tiktoken`` encoding.
+
+    ``tiktoken`` is deliberately optional. The import and encoding lookup are
+    deferred until the first call, so users who only need dependency-free
+    counters can install TurnScope without pulling model-tokenizer packages.
+    """
+
+    encoding: str = "cl100k_base"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.encoding, str) or not self.encoding.strip():
+            raise ValueError("encoding must be a non-empty string")
+
+    def __call__(self, text: str) -> int:
+        try:
+            encoder = _tiktoken_encoding(self.encoding)
+        except ImportError as error:
+            raise RuntimeError(
+                "TiktokenTokenCounter requires the optional 'tiktoken' package"
+            ) from error
+        return len(encoder.encode(text, disallowed_special=()))
+
+
+@dataclass(frozen=True, slots=True)
+class HuggingFaceTokenCounter:
+    """Count tokens with a Hugging Face fast tokenizer when installed locally."""
+
+    model: str
+    local_files_only: bool = True
+    revision: str = "main"
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.model, str) or not self.model.strip():
+            raise ValueError("model must be a non-empty string")
+        if not isinstance(self.local_files_only, bool):
+            raise ValueError("local_files_only must be a boolean")
+        if not isinstance(self.revision, str) or not self.revision.strip():
+            raise ValueError("revision must be a non-empty string")
+
+    def __call__(self, text: str) -> int:
+        try:
+            tokenizer = _huggingface_tokenizer(self.model, self.local_files_only, self.revision)
+        except ImportError as error:
+            raise RuntimeError(
+                "HuggingFaceTokenCounter requires the optional 'transformers' package"
+            ) from error
+        return len(tokenizer.encode(text, add_special_tokens=False))
+
+
+@lru_cache(maxsize=16)
+def _tiktoken_encoding(name: str) -> Any:
+    import tiktoken  # type: ignore[import-not-found]
+
+    return tiktoken.get_encoding(name)
+
+
+@lru_cache(maxsize=16)
+def _huggingface_tokenizer(model: str, local_files_only: bool, revision: str) -> Any:
+    from transformers import AutoTokenizer  # type: ignore[import-not-found]
+
+    return AutoTokenizer.from_pretrained(
+        model,
+        revision=revision,
+        local_files_only=local_files_only,
+        use_fast=True,
+    )
 
 
 _WHITESPACE_COUNTER = WhitespaceTokenCounter()
