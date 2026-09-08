@@ -224,6 +224,7 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 - A documented plugin registry for external rules and tokenizer integrations is available through the `plugins` command.
 - Tabular context-window export is available through the `tabular` command and `windows_csv` API.
 - A loopback JSON service is available through `TurnScopeService` and `create_server` for local pipelines.
+- The service also exposes deterministic corpus interaction networks with speaker, edge, centrality, and connectivity metrics.
 
 Named JSON profiles are available today through the build and audit commands;
 see [profiles](docs/profiles.md).

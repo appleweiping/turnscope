@@ -17,6 +17,11 @@ result = TurnScopeService().dispatch(
 )
 ```
 
-Supported operations are `audit`, `build`, `tabular`, and `search`. Paths are
+Supported operations are `audit`, `build`, `tabular`, `search`, and `network`. Paths are
 read-only inputs; callers own the process boundary and should not expose the
 default server beyond a trusted local machine.
+
+The `network` operation computes a deterministic interaction graph and returns
+speaker nodes, directed reply edges, centrality, weak-connectivity information,
+and aggregate metrics. Set the optional `speaker_field` metadata key when a
+custom utterance field stores speaker identity.

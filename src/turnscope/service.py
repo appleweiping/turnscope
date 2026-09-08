@@ -11,6 +11,7 @@ from typing import Any
 
 from .audit import default_auditor
 from .builder import ContextBuilder
+from .graph import interaction_network
 from .io import load_path
 from .models import ContextWindow, Conversation, Severity
 from .plugins import load_tokenizer
@@ -95,7 +96,15 @@ class TurnScopeService:
                     for hit in hits
                 ],
             }
-        raise ValueError("operation must be audit, build, tabular, or search")
+        if operation == "network":
+            speaker_field = request.get("speaker_field")
+            if speaker_field is not None and (
+                not isinstance(speaker_field, str) or not speaker_field.strip()
+            ):
+                raise ValueError("speaker_field must be a non-empty string when supplied")
+            network_report = interaction_network(conversations, speaker_field=speaker_field)
+            return {"operation": operation, "network": network_report.to_dict()}
+        raise ValueError("operation must be audit, build, tabular, search, or network")
 
 
 def create_server(

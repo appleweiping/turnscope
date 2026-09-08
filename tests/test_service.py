@@ -42,6 +42,18 @@ def test_service_build_tabular_audit_and_search(tmp_path) -> None:  # type: igno
     assert rows["rows"][-1]["context_ids"] == '["u1"]'
     assert service.dispatch({"operation": "audit", "input": str(source)})["passed"]
     assert service.dispatch({"operation": "search", "input": str(source), "query": "where"})["hits"]
+    network = service.dispatch({"operation": "network", "input": str(source)})["network"]
+    assert network["metrics"]["reply_count"] == 1
+    assert any(
+        edge["sender"] == "assistant" and edge["recipient"] == "user"
+        for edge in network["edges"]
+    )
+    try:
+        service.dispatch({"operation": "network", "input": str(source), "speaker_field": ""})
+    except ValueError as error:
+        assert "speaker_field" in str(error)
+    else:
+        raise AssertionError("empty speaker_field should be rejected")
 
 
 def test_service_http_dispatch(tmp_path) -> None:  # type: ignore[no-untyped-def]
