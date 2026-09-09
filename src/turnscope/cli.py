@@ -18,6 +18,7 @@ from .classifier import ConversationClassifier
 from .context_cli import configure_context_parser, run_context_command
 from .coordination import reply_coordination
 from .corpus import CorpusStore
+from .forecast_cli import configure_forecast_parser, run_forecast_command
 from .graph import interaction_network
 from .io import DataFormatError, conversation_to_dict, iter_path, load_path, parse_json_value
 from .models import ContextWindow, Conversation, Severity
@@ -49,6 +50,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="turnscope", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subcommands = parser.add_subparsers(dest="command", required=True)
+    configure_forecast_parser(
+        subcommands.add_parser("forecast", help="leakage-safe prefix event forecasting")
+    )
     configure_context_parser(
         subcommands.add_parser("context", help="SVD-plus-ridge expected-context models")
     )
@@ -276,6 +280,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _corpus_command(args)
         if args.command == "context":
             return run_context_command(args)
+        if args.command == "forecast":
+            return run_forecast_command(args)
         if args.command == "classify":
             return _classify_command(args)
         if args.command == "vectors":

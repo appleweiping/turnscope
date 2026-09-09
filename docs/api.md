@@ -15,6 +15,17 @@ the exact relation semantics. `save/load` and `to_dict/from_dict` use versioned,
 validated JSON. Only fitting needs the `context` NumPy extra. Read the full
 [estimator, leakage, artifact, and resource contract](expected-context.md).
 
+## First-event prefix forecasting
+
+`PrefixEventForecaster.fit(training, validation)` learns a conversation-weighted
+cumulative lexical NB model and selects its decision threshold on separate
+validation groups. `prepare_forecast_examples` produces immutable
+`ForecastDataset`, `ForecastExample`, and text-only `ForecastPrefix` records;
+`predict` and `score_prefix` return `ForecastPrediction`. `evaluate` refuses
+training/validation identities and reports prefix losses, any-alert decisions,
+and a training-prior baseline. `ForecastState`, `save/load`, and `to_dict/from_dict`
+expose frozen, validated persistence. See the [future-label and grouping contract](forecasting.md).
+
 ## Loading and adapters
 
 - `iter_conversations(stream, format="json")` lazily yields native records. JSONL is line-streamed; a JSON document is

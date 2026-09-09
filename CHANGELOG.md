@@ -4,6 +4,10 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add group-separated first-event prefix forecasting with conversation-weighted
+  lexical NB, validation-only decision thresholds, frozen artifacts, CLI, and
+  human-annotated CGA-WIKI evaluation.
+
 - Add fitted expected-context SVD-plus-ridge prediction, frozen validated model
   artifacts, explicit context relations, heldout mean-baseline comparisons, and
   `context fit/transform/evaluate`. NumPy is an optional fitting-only dependency.

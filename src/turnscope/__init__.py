@@ -24,6 +24,13 @@ from .expected_context import (
     ExpectedContextState,
     iter_context_pairs,
 )
+from .forecast import ForecastPrediction, ForecastState, PrefixEventForecaster
+from .forecast_data import (
+    ForecastDataset,
+    ForecastExample,
+    ForecastPrefix,
+    prepare_forecast_examples,
+)
 from .graph import (
     InteractionEdge,
     InteractionNetwork,
@@ -97,6 +104,11 @@ __all__ = [
     "ExpectedContextState",
     "FeaturePipeline",
     "FeatureRecord",
+    "ForecastDataset",
+    "ForecastExample",
+    "ForecastPrediction",
+    "ForecastPrefix",
+    "ForecastState",
     "HuggingFaceTokenCounter",
     "InteractionEdge",
     "InteractionNetwork",
@@ -106,6 +118,7 @@ __all__ = [
     "NetworkEdge",
     "NetworkMetrics",
     "PluginInfo",
+    "PrefixEventForecaster",
     "Profile",
     "RedactionPolicy",
     "RedactionReport",
@@ -156,6 +169,7 @@ __all__ = [
     "load_rule",
     "load_tokenizer",
     "normalize_sparse",
+    "prepare_forecast_examples",
     "redact_conversations",
     "redact_stream",
     "reply_coordination",

@@ -32,6 +32,9 @@ fitting and model tokenizers load their own dependencies only when used.
 - Deterministic CSV export of context-window metadata, with text excluded by default for safer tabular workflows.
 - A fitted [SVD-plus-ridge expected-context model](docs/expected-context.md) with
   explicit reply/sequence semantics, frozen heldout prediction, and mean-baseline evaluation.
+- [First-event prefix forecasting](docs/forecasting.md) with authentic future
+  labels, declared group separation, validation-only threshold selection, and
+  conversation-weighted lexical baselines.
 
 ```mermaid
 flowchart LR
