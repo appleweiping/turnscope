@@ -77,6 +77,15 @@ provides a dependency-free starter vocabulary. The equivalent CLI command is
 `turnscope coordination DATASET`, and the local service exposes the same
 per-conversation reports through the `coordination` operation.
 
+## Fitted conversation vectors
+
+`TfidfVectorizer.fit()` learns vocabulary and conversation-level document
+frequencies. `transform_conversation()` and `transform_corpus()` apply frozen
+parameters with none/L1/L2 normalization. `save()`/`load()` provide versioned
+JSON persistence, while `SparseSimilarityIndex`, `sparse_cosine`, and
+`normalize_sparse` provide sparse retrieval and geometry. See
+[fitted vectors](vectors.md) for arithmetic, CLI, validation, and complexity.
+
 ## Audit
 
 `Auditor.audit()` now consumes the conversation iterable in one pass instead of tupleizing it. The returned

@@ -193,6 +193,21 @@ report. JSONL input is consumed incrementally through the same
 `InteractionNetworkAccumulator` used by the Python API; see
 [network streaming](docs/network-streaming.md).
 
+### Fitted conversation vectors
+
+Fit lexical representations on training data, persist their vocabulary/IDF,
+then transform held-out data or retrieve similar conversations with sparse
+cosine scores:
+
+```bash
+turnscope vectors fit train.jsonl tfidf.json
+turnscope vectors transform tfidf.json heldout.jsonl -o vectors.json
+turnscope vectors query tfidf.json candidates.jsonl queries.jsonl --limit 5
+```
+
+The [vector guide](docs/vectors.md) documents the Python API, frozen training
+semantics, normalization, artifact validation, and memory complexity.
+
 ## Design guarantees
 
 - Input sequence is authoritative. TurnScope reports chronology violations instead of sorting them away.

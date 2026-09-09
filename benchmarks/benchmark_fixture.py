@@ -46,7 +46,7 @@ def main() -> None:
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
     result = {
-        "kind": "fixture-real",
+        "kind": "checked-in-example",
         "source": str(source.relative_to(root)).replace("\\", "/"),
         "source_sha256": hashlib.sha256(payload).hexdigest(),
         "source_bytes": len(payload),

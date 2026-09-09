@@ -33,8 +33,10 @@ from .profiles import get_profile
 from .redaction import RedactionPolicy, redact_conversations
 from .reporting import report_json, report_markdown, windows_json
 from .search import ConversationSearchIndex
+from .sparse import SparseSimilarityIndex
 from .tabular import write_windows_csv
 from .transformers import (
+    TfidfVectorizer,
     corpus_speaker_profiles,
     default_coordination_categories,
     linguistic_coordination,
@@ -147,6 +149,28 @@ def _parser() -> argparse.ArgumentParser:
     classify.add_argument("--alpha", type=float, default=1.0)
     classify.add_argument("--max-features", type=int)
     classify.add_argument("--output", "-o", type=Path)
+    vectors = subcommands.add_parser("vectors", help="fit and reuse sparse conversation TF-IDF")
+    vector_actions = vectors.add_subparsers(dest="action", required=True)
+    vector_fit = vector_actions.add_parser("fit", help="fit vocabulary and IDF on training data")
+    vector_fit.add_argument("input", type=Path)
+    vector_fit.add_argument("model", type=Path)
+    vector_fit.add_argument("--min-df", type=int, default=1)
+    vector_fit.add_argument("--max-features", type=int)
+    vector_transform = vector_actions.add_parser("transform", help="project with frozen parameters")
+    vector_transform.add_argument("model", type=Path)
+    vector_transform.add_argument("input", type=Path)
+    vector_transform.add_argument("--normalization", choices=("none", "l1", "l2"), default="l2")
+    vector_transform.add_argument("--output", "-o", type=Path)
+    vector_query = vector_actions.add_parser(
+        "query", help="retrieve conversations by sparse cosine"
+    )
+    vector_query.add_argument("model", type=Path)
+    vector_query.add_argument("input", type=Path, help="candidate conversations")
+    vector_query.add_argument("queries", type=Path, help="query conversations")
+    vector_query.add_argument("--limit", type=int, default=10)
+    vector_query.add_argument("--minimum-score", type=float, default=0.0)
+    vector_query.add_argument("--exclude-self", action="store_true")
+    vector_query.add_argument("--output", "-o", type=Path)
     redact = subcommands.add_parser(
         "redact", help="replace common PII and API-key patterns in conversation text"
     )
@@ -237,6 +261,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _corpus_command(args)
         if args.command == "classify":
             return _classify_command(args)
+        if args.command == "vectors":
+            return _vectors_command(args)
         if args.command == "redact":
             return _redact_command(args)
         if args.command == "plugins":
@@ -457,6 +483,49 @@ def _corpus_command(args: argparse.Namespace) -> int:
                         temporary.unlink()
             result = {"exported": exported, "output": str(args.output)}
         print(json.dumps(result, ensure_ascii=True, allow_nan=False))
+    return 0
+
+
+def _vectors_command(args: argparse.Namespace) -> int:
+    inputs = [args.input] if args.action == "fit" else [args.input, args.model]
+    if args.action == "query":
+        inputs.append(args.queries)
+    output = args.model if args.action == "fit" else args.output
+    if any(_paths_collide(source, output) for source in inputs):
+        raise ValueError("vector output path must differ from every input path")
+    if args.action == "fit":
+        model = TfidfVectorizer(
+            min_document_frequency=args.min_df, max_features=args.max_features
+        ).fit(iter_path(args.input))
+        model.save(args.model)
+        print(
+            json.dumps(
+                {"documents": model.state.documents, "features": len(model.state.vocabulary)}
+            )
+        )
+        return 0
+    model = TfidfVectorizer.load(args.model)
+    if args.action == "transform":
+        vectors = model.transform_corpus(iter_path(args.input), normalization=args.normalization)
+        result: object = {identifier: dict(vector) for identifier, vector in vectors.items()}
+    else:
+        index = SparseSimilarityIndex(model.transform_corpus(iter_path(args.input)))
+        queries = model.transform_corpus(iter_path(args.queries))
+        # Validate query options even if the query corpus is empty.
+        index.query({}, limit=args.limit, minimum_score=args.minimum_score)
+        result = {
+            identifier: [
+                {"id": match.id, "score": match.score}
+                for match in index.query(
+                    vector,
+                    limit=args.limit,
+                    minimum_score=args.minimum_score,
+                    exclude_id=identifier if args.exclude_self else None,
+                )
+            ]
+            for identifier, vector in queries.items()
+        }
+    _write(json.dumps(result, sort_keys=True, ensure_ascii=True, allow_nan=False) + "\n", output)
     return 0
 
 

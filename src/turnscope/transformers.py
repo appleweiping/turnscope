@@ -7,9 +7,11 @@ import re
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from types import MappingProxyType
 
 from .models import Conversation, Utterance
+from .sparse import normalize_sparse
 
 _TOKEN = re.compile(r"[\w]+(?:['-][\w]+)*", re.UNICODE)
 
@@ -28,7 +30,7 @@ class TfidfState:
 
 
 class TfidfVectorizer:
-    """Sparse per-utterance TF-IDF vectors with deterministic vocabulary order."""
+    """Conversation-fitted TF-IDF with frozen sparse utterance/conversation projections."""
 
     def __init__(self, *, min_document_frequency: int = 1, max_features: int | None = None) -> None:
         if (
@@ -44,6 +46,7 @@ class TfidfVectorizer:
         self._min_df = min_document_frequency
         self._max_features = max_features
         self._state: TfidfState | None = None
+        self._document_frequency: dict[str, int] = {}
 
     @property
     def state(self) -> TfidfState:
@@ -53,14 +56,19 @@ class TfidfVectorizer:
 
     def fit(self, conversations: Iterable[Conversation]) -> TfidfVectorizer:
         """Fit on conversation documents, counting each conversation once."""
-        materialized = tuple(conversations)
-        if not materialized:
-            raise ValueError("at least one conversation is required")
         document_frequency: Counter[str] = Counter()
-        for conversation in materialized:
+        ids: set[str] = set()
+        for conversation in conversations:
+            if not isinstance(conversation, Conversation):
+                raise TypeError("conversations must contain Conversation values")
+            if conversation.id in ids:
+                raise ValueError("conversation IDs must be unique")
+            ids.add(conversation.id)
             document_frequency.update(
                 {token for item in conversation.utterances for token in _tokens(item.text)}
             )
+        if not ids:
+            raise ValueError("at least one conversation is required")
         candidates = [
             (token, frequency)
             for token, frequency in document_frequency.items()
@@ -70,7 +78,7 @@ class TfidfVectorizer:
         if self._max_features is not None:
             candidates = candidates[: self._max_features]
         vocabulary = tuple(token for token, _ in candidates)
-        documents = len(materialized)
+        documents = len(ids)
         idf = MappingProxyType(
             {
                 token: math.log((1 + documents) / (1 + document_frequency[token])) + 1.0
@@ -78,23 +86,92 @@ class TfidfVectorizer:
             }
         )
         self._state = TfidfState(vocabulary, idf, documents)
+        self._document_frequency = dict(candidates)
         return self
 
     def transform(self, conversation: Conversation) -> Mapping[str, Mapping[str, float]]:
-        """Return sparse normalized vectors keyed by utterance ID."""
-        state = self.state
-        vocabulary = set(state.vocabulary)
+        """Return relative-TF times IDF vectors keyed by utterance ID (legacy API)."""
+        _ = self.state
         vectors: dict[str, Mapping[str, float]] = {}
         for item in conversation.utterances:
-            counts = Counter(token for token in _tokens(item.text) if token in vocabulary)
-            total = sum(counts.values())
-            values = (
-                {token: (count / total) * state.idf[token] for token, count in counts.items()}
-                if total
-                else {}
-            )
-            vectors[item.id] = MappingProxyType(dict(sorted(values.items())))
+            vectors[item.id] = self._project(_tokens(item.text), normalization="none")
         return MappingProxyType(vectors)
+
+    def _project(self, tokens: Iterable[str], *, normalization: str) -> Mapping[str, float]:
+        state = self.state
+        counts = Counter(token for token in tokens if token in state.idf)
+        total = sum(counts.values())
+        values = {token: count / total * state.idf[token] for token, count in counts.items()}
+        return normalize_sparse(values, normalization=normalization)
+
+    def transform_conversation(
+        self, conversation: Conversation, *, normalization: str = "l2"
+    ) -> Mapping[str, float]:
+        """Aggregate text across all turns and project using only fitted parameters."""
+        if not isinstance(conversation, Conversation):
+            raise TypeError("conversation must be a Conversation value")
+        return self._project(
+            (token for item in conversation.utterances for token in _tokens(item.text)),
+            normalization=normalization,
+        )
+
+    def transform_corpus(
+        self, conversations: Iterable[Conversation], *, normalization: str = "l2"
+    ) -> Mapping[str, Mapping[str, float]]:
+        """Return conversation vectors with unique IDs, without refitting vocabulary or IDF."""
+        _ = self.state
+        normalize_sparse({}, normalization=normalization)
+        vectors: dict[str, Mapping[str, float]] = {}
+        for conversation in conversations:
+            if not isinstance(conversation, Conversation):
+                raise TypeError("conversations must contain Conversation values")
+            if conversation.id in vectors:
+                raise ValueError("conversation IDs must be unique")
+            vectors[conversation.id] = self.transform_conversation(
+                conversation, normalization=normalization
+            )
+        return MappingProxyType(dict(sorted(vectors.items())))
+
+    def to_dict(self) -> dict[str, object]:
+        """Return versioned fitted parameters and a corruption-detection checksum."""
+        from .tfidf_artifact import encode_model
+
+        return encode_model(
+            self.state.documents, self._min_df, self._max_features, self._document_frequency
+        )
+
+    @classmethod
+    def from_dict(cls, value: object) -> TfidfVectorizer:
+        """Validate an artifact completely before constructing a fitted vectorizer."""
+        from .tfidf_artifact import decode_model
+
+        documents, min_df, max_features, frequencies = decode_model(value)
+        vectorizer = cls(min_document_frequency=min_df, max_features=max_features)
+        vectorizer._document_frequency = frequencies
+        vectorizer._state = TfidfState(
+            tuple(frequencies),
+            MappingProxyType(
+                {
+                    token: math.log((1 + documents) / (1 + frequency)) + 1.0
+                    for token, frequency in frequencies.items()
+                }
+            ),
+            documents,
+        )
+        return vectorizer
+
+    def save(self, path: str | Path) -> None:
+        """Atomically save portable JSON parameters without retaining training text."""
+        from .tfidf_artifact import save_model
+
+        save_model(self.to_dict(), Path(path))
+
+    @classmethod
+    def load(cls, path: str | Path) -> TfidfVectorizer:
+        """Load a strict JSON artifact; no executable serialization is accepted."""
+        from .tfidf_artifact import load_model
+
+        return cls.from_dict(load_model(Path(path)))
 
     def fit_transform(
         self, conversations: Sequence[Conversation]

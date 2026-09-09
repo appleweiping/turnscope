@@ -48,6 +48,7 @@ from .profiles import Profile, get_profile, load_profiles
 from .redaction import RedactionPolicy, RedactionReport, redact_conversations, redact_stream
 from .search import ConversationSearchIndex, SearchHit
 from .service import TurnScopeService, create_server
+from .sparse import SparseSimilarityIndex, VectorMatch, normalize_sparse, sparse_cosine
 from .tabular import window_rows, windows_csv, write_windows_csv
 from .transformers import (
     ConversationFeatures,
@@ -100,6 +101,7 @@ __all__ = [
     "ReplyForest",
     "SearchHit",
     "Severity",
+    "SparseSimilarityIndex",
     "SpeakerProfile",
     "SpeakerSummary",
     "TfidfState",
@@ -112,6 +114,7 @@ __all__ = [
     "TurnWindowPolicy",
     "Utf8ByteTokenCounter",
     "Utterance",
+    "VectorMatch",
     "WhitespaceTokenCounter",
     "adapt_anthropic",
     "adapt_conversation",
@@ -138,9 +141,11 @@ __all__ = [
     "load_profiles",
     "load_rule",
     "load_tokenizer",
+    "normalize_sparse",
     "redact_conversations",
     "redact_stream",
     "reply_forest",
+    "sparse_cosine",
     "speaker_profiles",
     "window_rows",
     "windows_csv",

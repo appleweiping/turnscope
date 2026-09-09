@@ -4,6 +4,9 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Extend fitted TF-IDF with immutable conversation projections, frozen JSON
+  models, sparse cosine retrieval, and `vectors fit/transform/query` commands.
+
 - Add a strict ConvoKit adapter for `utterances.jsonl`-style records, including
   speaker identity, reply links, metadata, timestamps, and grouped streaming
   ingestion.
