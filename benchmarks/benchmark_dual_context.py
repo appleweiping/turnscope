@@ -23,6 +23,7 @@ from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping
 from contextlib import suppress
 from dataclasses import asdict, dataclass
+from functools import partial
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from types import MappingProxyType
@@ -1089,7 +1090,12 @@ def _publish_report(destination: Path, payload: bytes) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    options: dict[str, Any] = {"description": __doc__}
+    if sys.version_info >= (3, 14):
+        # Formatter construction probes stdout before ArgumentParser applies
+        # its color option. Disable both probes without changing host streams.
+        options.update(color=False, formatter_class=partial(argparse.HelpFormatter, color=False))
+    parser = argparse.ArgumentParser(**options)
     parser.add_argument("archive", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)

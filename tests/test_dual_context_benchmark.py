@@ -304,6 +304,14 @@ def test_closed_stdout_does_not_misreport_successfully_published_artifact(tmp_pa
     closed = io.StringIO()
     closed.close()
     diagnostic = io.StringIO()
+    # Reach the actual Python 3.14 color probe on Windows too, instead of
+    # relying on the host terminal's virtual-terminal capability.
+    for name in ("PYTHON_COLORS", "NO_COLOR", "FORCE_COLOR", "TERM"):
+        monkeypatch.delenv(name, raising=False)
+    if sys.version_info >= (3, 14) and sys.platform == "win32":
+        import nt
+
+        monkeypatch.setattr(nt, "_supports_virtual_terminal", lambda: True)
     monkeypatch.setattr(bench.sys, "stdout", closed)
     monkeypatch.setattr(bench.sys, "stderr", diagnostic)
     assert bench.main([str(tmp_path / "archive"), "--output", str(output)]) == 1
@@ -313,6 +321,17 @@ def test_closed_stdout_does_not_misreport_successfully_published_artifact(tmp_pa
         "report_published": True,
         "error_type": "ValueError",
     }
+
+
+def test_benchmark_help_is_plain_even_when_color_is_requested(monkeypatch, capsys):
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    monkeypatch.setenv("PYTHON_COLORS", "1")
+    with pytest.raises(SystemExit) as finished:
+        bench.main(["--help"])
+    assert finished.value.code == 0
+    captured = capsys.readouterr()
+    assert "usage:" in captured.out and "\x1b[" not in captured.out
+    assert not captured.err
 
 
 def test_report_generation_failure_is_redacted_and_publishes_no_output(

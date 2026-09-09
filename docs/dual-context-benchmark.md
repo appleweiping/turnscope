@@ -9,8 +9,8 @@ expected-context mathematics is attributed to Justine Zhang's
 and independently checked against ConvoKit's expected-context implementation at
 `5dabba5ae034686185d9ff6612e2d57d694bff68`.
 
-The adapter, miniature synthetic end-to-end tests and one complete frozen
-official-fold experiment were run on 2026-09-09. The aggregate
+The adapter, miniature synthetic end-to-end tests, a complete frozen
+official-fold experiment and a compatibility-repair rerun were run on 2026-09-09. The original aggregate
 [observed report](../benchmarks/results/cga-dual-context.json) is included without
 discarding poor scores. These are development-branch capabilities, not a statement
 about the published main branch or a released package.
@@ -99,6 +99,34 @@ published report, and no scores from that attempt were used. After the compatibi
 guard and cross-version tests passed, this run restarted with **the original
 protocol**, not a different seed, dimension, cluster count, candidate pool or
 metric. The negative results above are the retained completed result.
+
+### Compatibility-only rerun after remote CI
+
+The first commit's remote CI exposed two portability issues unrelated to the
+model mathematics: Windows/Python 3.10 lacked `os.set_blocking`, and Python 3.14's
+argument-help formatter probed an already-closed stdout before the benchmark
+could run. The real nonblocking-pipe test now skips only when that capability is
+unavailable; six portable short-write cases still exercise the output contract.
+The benchmark disables color in both parser and formatter construction. A
+strengthened test reproduces the actual color probe even on Windows.
+
+The [compatibility-repair rerun](../benchmarks/results/cga-dual-context-ci-repair.json)
+uses the **unchanged original protocol**, source archive and model runtime. Its
+source, task, model and protocol digests, every retrieval/geometry result, null
+control, baseline state and clustering result exactly match the original run.
+Only the benchmark helper changed among the 41 tracked source/config bindings.
+No parameter or candidate was selected from the earlier scores. Both reports
+remain available; the first was not replaced by a better-scoring run.
+
+The new report SHA-256 is
+`c31ed7738bd28b57c9727b732f50b673d8aa0d678de46869c62351dddbea51dd`;
+the repaired helper SHA-256 is
+`a13d2bc0b0c0450c4fba5c4863bf69b77474a074dfb04aa671911416c8605bff`.
+End-to-end time was 204.975 seconds, main/null fit times were 33.246/36.171
+seconds, and fit Python-tracked peaks were 244,309,765/239,397,768 bytes.
+These are observed local timings, not dedicated-host throughput measurements.
+Python, NumPy and Unicode versions are unchanged. The original failure history
+and final commit/CI validation are recorded separately in the alignment evidence.
 
 ## Frozen before seeing retrieval scores
 

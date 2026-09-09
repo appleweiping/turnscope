@@ -4,6 +4,9 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Make benchmark argument parsing safe with closed stdout on Python 3.14, and
+  retain the unchanged-protocol real-data rerun plus portable short-write tests.
+
 - Add shared-space dual-context fitting, frozen term/utterance/context projections,
   range/orientation/shift, bounded deterministic clustering and strict JSON models.
 - Add `dual-context fit/transform/terms/evaluate` and explicit fixed-pool

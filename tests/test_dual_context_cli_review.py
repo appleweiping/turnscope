@@ -29,7 +29,7 @@ def test_real_nonblocking_stdout_cannot_report_a_short_write_as_complete(monkeyp
     try:
         try:
             os.set_blocking(write_fd, False)
-        except (OSError, NotImplementedError):
+        except (AttributeError, OSError, NotImplementedError):
             pytest.skip("this runtime cannot make anonymous pipe writes nonblocking")
         writer = os.fdopen(write_fd, "wb", buffering=0)
         monkeypatch.setattr(sys, "stdout", SimpleNamespace(buffer=writer))
@@ -50,6 +50,24 @@ def test_real_nonblocking_stdout_cannot_report_a_short_write_as_complete(monkeyp
         else:
             os.close(write_fd)
         os.close(read_fd)
+
+
+@pytest.mark.parametrize("binary", [False, True])
+@pytest.mark.parametrize("returned", [None, 0, 1])
+def test_short_stdout_writes_are_rejected_on_every_platform(monkeypatch, binary, returned):
+    calls = []
+
+    def write(payload):
+        calls.append(payload)
+        return returned
+
+    stream = SimpleNamespace(write=write, flush=lambda: None)
+    output = SimpleNamespace(buffer=stream) if binary else stream
+    monkeypatch.setattr(sys, "stdout", output)
+    with pytest.raises(OSError, match="incomplete"):
+        cli._publish(b'{"value":true}\n', None)
+    assert len(calls) == 1  # Do not resend a prefix after an incomplete write.
+    assert isinstance(calls[0], bytes if binary else str)
 
 
 def test_growing_jsonl_is_checked_against_the_cumulative_byte_limit(tmp_path, monkeypatch):

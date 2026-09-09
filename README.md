@@ -37,6 +37,8 @@ fitting and model tokenizers load their own dependencies only when used.
   Its [CLI](docs/dual-context-cli.md) fits, loads, transforms and evaluates explicit
   fixed candidate pools; unknown queries and unprojectable positive candidates
   remain visible in evaluation denominators. These measurements are not dialogue-act labels.
+  Its [fixed real-dialogue benchmark](docs/dual-context-benchmark.md) retains the
+  observed negative result: TF-IDF retrieved replies better on all four tasks.
 - [First-event prefix forecasting](docs/forecasting.md) with authentic future
   labels, declared group separation, validation-only threshold selection, and
   conversation-weighted lexical baselines.
