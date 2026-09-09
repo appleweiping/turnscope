@@ -66,10 +66,19 @@ available. Duplicate conversation IDs and missing identities fail explicitly.
 The same analysis is available as `turnscope speaker-profile DATASET`, which
 emits deterministic JSON and accepts `--field` for metadata-backed identities.
 
-## Linguistic coordination
+## Reply-aware coordination and legacy conditional rates
 
-`linguistic_coordination(conversation, categories)` measures directional
-function-word coordination for adjacent turns by different roles. The returned
+`reply_coordination(conversations, categories=None, speaker_field=None, ...)`
+aggregates explicit reply links between stable speakers. Its
+`ReplyCoordinationScore` retains conditional and partner-specific baseline
+rates, their difference, and independently gated per-pair/category counts.
+The CLI is `turnscope reply-coordination DATASET`. See
+[reply coordination](reply-coordination.md) for direction, equations,
+thresholds, graph validation, and lexicon limitations.
+
+The legacy `linguistic_coordination(conversation, categories)` measures a
+conditional category response rate for adjacent turns by different roles,
+without subtracting a baseline. The returned
 `CoordinationScore` values retain conditioned and coordinated turn counts, so a
 small sample is not mistaken for a strong estimate; `None` means the source
 provided no evidence for that category. `default_coordination_categories()`

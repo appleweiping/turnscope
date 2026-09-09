@@ -15,6 +15,7 @@ from .adapters import (
 from .audit import Auditor, default_auditor
 from .builder import ContextBuilder
 from .classifier import ClassifierState, ConversationClassifier
+from .coordination import ReplyCoordinationScore, reply_coordination
 from .corpus import CorpusStore
 from .graph import (
     InteractionEdge,
@@ -98,6 +99,7 @@ __all__ = [
     "RedactionPolicy",
     "RedactionReport",
     "ReplyChainPolicy",
+    "ReplyCoordinationScore",
     "ReplyForest",
     "SearchHit",
     "Severity",
@@ -144,6 +146,7 @@ __all__ = [
     "normalize_sparse",
     "redact_conversations",
     "redact_stream",
+    "reply_coordination",
     "reply_forest",
     "sparse_cosine",
     "speaker_profiles",

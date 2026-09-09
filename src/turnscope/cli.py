@@ -15,9 +15,10 @@ from . import __version__
 from .audit import default_auditor
 from .builder import ContextBuilder
 from .classifier import ConversationClassifier
+from .coordination import reply_coordination
 from .corpus import CorpusStore
 from .graph import interaction_network
-from .io import DataFormatError, conversation_to_dict, iter_path, load_path
+from .io import DataFormatError, conversation_to_dict, iter_path, load_path, parse_json_value
 from .models import ContextWindow, Conversation, Severity
 from .plugins import list_plugins, load_rule, load_tokenizer
 from .policies import (
@@ -130,13 +131,23 @@ def _parser() -> argparse.ArgumentParser:
     network.add_argument("--field", help="metadata field containing a stable speaker identity")
     network.add_argument("--output", "-o", type=Path)
     coordination = subcommands.add_parser(
-        "coordination", help="measure directional function-word coordination"
+        "coordination", help="measure legacy adjacent-role conditional category rates"
     )
     coordination.add_argument("input", type=Path)
     coordination.add_argument(
         "--categories", type=Path, help="JSON object mapping category names to word arrays"
     )
     coordination.add_argument("--output", "-o", type=Path)
+    reply_scores = subcommands.add_parser(
+        "reply-coordination", help="measure reply-linked, baseline-corrected lexical coordination"
+    )
+    reply_scores.add_argument("input", type=Path)
+    reply_scores.add_argument("--categories", type=Path)
+    reply_scores.add_argument("--speaker-field")
+    reply_scores.add_argument("--min-replies", type=int, default=1)
+    reply_scores.add_argument("--min-conditioned-replies", type=int, default=1)
+    reply_scores.add_argument("--min-response-category-replies", type=int, default=0)
+    reply_scores.add_argument("--output", "-o", type=Path)
     classify = subcommands.add_parser(
         "classify", help="fit and apply a conversation text classifier"
     )
@@ -263,6 +274,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _classify_command(args)
         if args.command == "vectors":
             return _vectors_command(args)
+        if args.command == "reply-coordination":
+            return _reply_coordination_command(args)
         if args.command == "redact":
             return _redact_command(args)
         if args.command == "plugins":
@@ -483,6 +496,30 @@ def _corpus_command(args: argparse.Namespace) -> int:
                         temporary.unlink()
             result = {"exported": exported, "output": str(args.output)}
         print(json.dumps(result, ensure_ascii=True, allow_nan=False))
+    return 0
+
+
+def _reply_coordination_command(args: argparse.Namespace) -> int:
+    for source in (args.input, args.categories):
+        if source is not None and _paths_collide(source, args.output):
+            raise ValueError("reply-coordination output must differ from all input paths")
+    categories = (
+        None
+        if args.categories is None
+        else parse_json_value(args.categories.read_text(encoding="utf-8"), location="categories")
+    )
+    scores = reply_coordination(
+        iter_path(args.input),
+        categories,
+        speaker_field=args.speaker_field,
+        min_replies=args.min_replies,
+        min_conditioned_replies=args.min_conditioned_replies,
+        min_response_category_replies=args.min_response_category_replies,
+    )
+    _write(
+        json.dumps([score.to_dict() for score in scores], sort_keys=True, allow_nan=False) + "\n",
+        args.output,
+    )
     return 0
 
 

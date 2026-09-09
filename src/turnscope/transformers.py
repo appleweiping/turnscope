@@ -382,10 +382,10 @@ def corpus_speaker_profiles(
 
 @dataclass(frozen=True, slots=True)
 class CoordinationScore:
-    """Directional function-word coordination between two speaker roles.
+    """Legacy adjacent-role conditional category response rate.
 
-    ``score`` is the conditional response rate: among source turns that use a
-    category, the fraction of immediately following target turns that also use
+    ``score`` is the conditional response rate (without baseline correction):
+    among source turns that use a category, the fraction of following target turns that also use
     that category. Counts are retained so small samples are not mistaken for a
     reliable population estimate.
     """
@@ -426,13 +426,14 @@ def linguistic_coordination(
     conversation: Conversation,
     categories: Mapping[str, Iterable[str]],
 ) -> tuple[CoordinationScore, ...]:
-    """Measure deterministic adjacent-turn linguistic coordination.
+    """Measure the legacy adjacent-role conditional response rate.
 
     Categories map names to function words (case-insensitive). Only adjacent
     utterances by different roles are considered; reply-tree traversal is not
     inferred from missing ``reply_to`` links. A ``None`` score means that no
     source turn used the category, preserving the distinction between no
     evidence and zero coordination.
+    Use ``reply_coordination`` for actual reply links and baseline-corrected scores.
     """
 
     if not isinstance(categories, Mapping) or not categories:

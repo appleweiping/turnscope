@@ -4,6 +4,10 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add actual-reply lexical coordination with partner-specific baseline
+  subtraction, sparse observed speaker pairs, support gates, and a
+  `reply-coordination` CLI. Preserve the legacy adjacent-role conditional rates.
+
 - Extend fitted TF-IDF with immutable conversation projections, frozen JSON
   models, sparse cosine retrieval, and `vectors fit/transform/query` commands.
 
