@@ -6,8 +6,9 @@ not just a mean of neighboring messages. The predictor is TurnScope's estimator;
 it does not reproduce ConvoKit's exact expected-context estimator, clustering,
 term-range diagnostics, or dual-context framework. No pretrained model is used.
 
-Install `pip install 'turnscope[context]'` to fit models; the optional dependency
-is NumPy. Loading, prediction, transformation, and evaluation use the standard
+From a checkout of `feat/whole-repository-alignment`, install
+`python -m pip install -e '.[context]'` to fit models; the optional dependency
+is NumPy. This API is currently unreleased. Loading, prediction, transformation, and evaluation use the standard
 library, including when NumPy is not installed.
 
 ## Context means exactly the declared relation

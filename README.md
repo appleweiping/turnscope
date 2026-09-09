@@ -49,8 +49,12 @@ flowchart LR
 
 TurnScope requires Python 3.10 or newer.
 
+These development docs and examples target `feat/whole-repository-alignment`.
+The newer fitted-vector and context-model APIs are not yet a released or
+merged-main feature set. Install the same branch to reproduce these examples:
+
 ```bash
-python -m pip install "git+https://github.com/appleweiping/turnscope.git"
+python -m pip install "git+https://github.com/appleweiping/turnscope.git@feat/whole-repository-alignment"
 ```
 
 For an editable source checkout:
