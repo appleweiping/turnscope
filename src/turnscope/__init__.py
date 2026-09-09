@@ -17,6 +17,13 @@ from .builder import ContextBuilder
 from .classifier import ClassifierState, ConversationClassifier
 from .coordination import ReplyCoordinationScore, reply_coordination
 from .corpus import CorpusStore
+from .expected_context import (
+    ContextPair,
+    ContextPrediction,
+    ExpectedContextModel,
+    ExpectedContextState,
+    iter_context_pairs,
+)
 from .graph import (
     InteractionEdge,
     InteractionNetwork,
@@ -74,6 +81,8 @@ __all__ = [
     "ChatFormat",
     "ClassifierState",
     "ContextBuilder",
+    "ContextPair",
+    "ContextPrediction",
     "ContextWindow",
     "Conversation",
     "ConversationClassifier",
@@ -84,6 +93,8 @@ __all__ = [
     "CorpusSpeakerProfile",
     "CorpusStore",
     "DiversityProfile",
+    "ExpectedContextModel",
+    "ExpectedContextState",
     "FeaturePipeline",
     "FeatureRecord",
     "HuggingFaceTokenCounter",
@@ -135,6 +146,7 @@ __all__ = [
     "iter_adapted_convokit_jsonl",
     "iter_adapted_jsonl",
     "iter_adapted_path",
+    "iter_context_pairs",
     "iter_conversations",
     "iter_path",
     "linguistic_coordination",

@@ -1,6 +1,19 @@
 # Python API
 
-The public names below are exported from `turnscope`. Runtime modules depend only on the Python standard library.
+The public names below are exported from `turnscope`. Core runtime operations use the Python standard library;
+optional tokenizers and expected-context fitting load their explicitly selected dependencies lazily.
+
+## Fitted expected contexts
+
+`ExpectedContextModel` fits a context SVD and centered ridge map on explicit reply,
+predecessor, or positional-successor examples. Its immutable `ExpectedContextState`
+stores separate frozen source/context TF-IDF statistics and learned numeric parameters.
+`predict(text)`, `project_context(text)`, and `transform(conversation)` return
+`ContextPrediction` coordinates with token coverage; `evaluate(conversations)` reports
+heldout MSE and a fixed training-context-mean baseline. `iter_context_pairs` exposes
+the exact relation semantics. `save/load` and `to_dict/from_dict` use versioned,
+validated JSON. Only fitting needs the `context` NumPy extra. Read the full
+[estimator, leakage, artifact, and resource contract](expected-context.md).
 
 ## Loading and adapters
 

@@ -15,6 +15,7 @@ from . import __version__
 from .audit import default_auditor
 from .builder import ContextBuilder
 from .classifier import ConversationClassifier
+from .context_cli import configure_context_parser, run_context_command
 from .coordination import reply_coordination
 from .corpus import CorpusStore
 from .graph import interaction_network
@@ -48,6 +49,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="turnscope", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subcommands = parser.add_subparsers(dest="command", required=True)
+    configure_context_parser(
+        subcommands.add_parser("context", help="SVD-plus-ridge expected-context models")
+    )
     build = subcommands.add_parser("build", help="build context windows")
     build.add_argument("input", type=Path)
     build.add_argument("--output", "-o", type=Path)
@@ -270,6 +274,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "corpus":
             return _corpus_command(args)
+        if args.command == "context":
+            return run_context_command(args)
         if args.command == "classify":
             return _classify_command(args)
         if args.command == "vectors":

@@ -14,7 +14,8 @@ chat or threaded-discussion exports.
 Conversation records often look valid while quietly containing duplicate identifiers, out-of-order timestamps,
 replies to missing or future turns, accidental same-role runs, or inconsistent token counts. If context is built first,
 those defects become data leakage or irreproducible evaluation results. TurnScope keeps construction and validation
-separate, explicit, and dependency-free at runtime.
+separate and explicit. Core operations are dependency-free; optional numerical
+fitting and model tokenizers load their own dependencies only when used.
 
 ## Features
 
@@ -29,6 +30,8 @@ separate, explicit, and dependency-free at runtime.
 - A conservative pattern-based [redaction workflow](docs/redaction.md) for sanitized exports.
 - Deterministic behavior: input order is preserved, ties are not silently reordered, and whole messages are selected.
 - Deterministic CSV export of context-window metadata, with text excluded by default for safer tabular workflows.
+- A fitted [SVD-plus-ridge expected-context model](docs/expected-context.md) with
+  explicit reply/sequence semantics, frozen heldout prediction, and mean-baseline evaluation.
 
 ```mermaid
 flowchart LR
