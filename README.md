@@ -32,6 +32,11 @@ fitting and model tokenizers load their own dependencies only when used.
 - Deterministic CSV export of context-window metadata, with text excluded by default for safer tabular workflows.
 - A fitted [SVD-plus-ridge expected-context model](docs/expected-context.md) with
   explicit reply/sequence semantics, frozen heldout prediction, and mean-baseline evaluation.
+- A [shared dual-context model](docs/dual-context.md) with two direction maps,
+  range/orientation/shift and frozen clustering in a single training-derived space.
+  Its [CLI](docs/dual-context-cli.md) fits, loads, transforms and evaluates explicit
+  fixed candidate pools; unknown queries and unprojectable positive candidates
+  remain visible in evaluation denominators. These measurements are not dialogue-act labels.
 - [First-event prefix forecasting](docs/forecasting.md) with authentic future
   labels, declared group separation, validation-only threshold selection, and
   conversation-weighted lexical baselines.

@@ -4,6 +4,12 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add shared-space dual-context fitting, frozen term/utterance/context projections,
+  range/orientation/shift, bounded deterministic clustering and strict JSON models.
+- Add `dual-context fit/transform/terms/evaluate` and explicit fixed-pool
+  multi-positive retrieval with all-query/OOV denominators, private bounded outputs
+  and an original multi-process fit/save/reload demonstration.
+
 - Add group-separated first-event prefix forecasting with conversation-weighted
   lexical NB, validation-only decision thresholds, frozen artifacts, CLI, and
   human-annotated CGA-WIKI evaluation.

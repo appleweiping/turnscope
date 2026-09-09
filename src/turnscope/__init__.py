@@ -17,6 +17,19 @@ from .builder import ContextBuilder
 from .classifier import ClassifierState, ConversationClassifier
 from .coordination import ReplyCoordinationScore, reply_coordination
 from .corpus import CorpusStore
+from .dual_context import (
+    ClusterState,
+    ContextEdge,
+    ContextProjection,
+    ContextRecord,
+    DirectionPrediction,
+    DirectionState,
+    DualContextConfig,
+    DualContextModel,
+    DualContextPrediction,
+    DualContextState,
+)
+from .dual_context_evaluation import evaluate_dual_context
 from .expected_context import (
     ContextPair,
     ContextPrediction,
@@ -87,9 +100,13 @@ __all__ = [
     "CallableTransformer",
     "ChatFormat",
     "ClassifierState",
+    "ClusterState",
     "ContextBuilder",
+    "ContextEdge",
     "ContextPair",
     "ContextPrediction",
+    "ContextProjection",
+    "ContextRecord",
     "ContextWindow",
     "Conversation",
     "ConversationClassifier",
@@ -99,7 +116,13 @@ __all__ = [
     "CoordinationScore",
     "CorpusSpeakerProfile",
     "CorpusStore",
+    "DirectionPrediction",
+    "DirectionState",
     "DiversityProfile",
+    "DualContextConfig",
+    "DualContextModel",
+    "DualContextPrediction",
+    "DualContextState",
     "ExpectedContextModel",
     "ExpectedContextState",
     "FeaturePipeline",
@@ -152,6 +175,7 @@ __all__ = [
     "create_server",
     "default_auditor",
     "default_coordination_categories",
+    "evaluate_dual_context",
     "get_profile",
     "interaction_edges",
     "interaction_network",

@@ -18,6 +18,7 @@ from .classifier import ConversationClassifier
 from .context_cli import configure_context_parser, run_context_command
 from .coordination import reply_coordination
 from .corpus import CorpusStore
+from .dual_context_cli import configure_dual_context_parser, run_dual_context_command
 from .forecast_cli import configure_forecast_parser, run_forecast_command
 from .graph import interaction_network
 from .io import DataFormatError, conversation_to_dict, iter_path, load_path, parse_json_value
@@ -55,6 +56,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     configure_context_parser(
         subcommands.add_parser("context", help="SVD-plus-ridge expected-context models")
+    )
+    configure_dual_context_parser(
+        subcommands.add_parser("dual-context", help="shared bidirectional context and clustering")
     )
     build = subcommands.add_parser("build", help="build context windows")
     build.add_argument("input", type=Path)
@@ -280,6 +284,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _corpus_command(args)
         if args.command == "context":
             return run_context_command(args)
+        if args.command == "dual-context":
+            return run_dual_context_command(args)
         if args.command == "forecast":
             return run_forecast_command(args)
         if args.command == "classify":
