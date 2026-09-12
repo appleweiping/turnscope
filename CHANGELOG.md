@@ -4,6 +4,12 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add ordered hierarchical GRU event forecasting with train-only token
+  vocabularies, packed CPU optimization, separate checkpoint/policy validation,
+  immutable NumPy inference, closed ZIP/NPY artifacts and private-by-default
+  `neural-forecast fit/predict/evaluate/inspect` workflows. Optional numerical
+  dependencies are lazy; no pretrained weights or optimizer state are loaded.
+
 - Make benchmark argument parsing safe with closed stdout on Python 3.14, and
   retain the unchanged-protocol real-data rerun plus portable short-write tests.
 

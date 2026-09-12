@@ -42,6 +42,12 @@ fitting and model tokenizers load their own dependencies only when used.
 - [First-event prefix forecasting](docs/forecasting.md) with authentic future
   labels, declared group separation, validation-only threshold selection, and
   conversation-weighted lexical baselines.
+- Optional [hierarchical neural forecasting](docs/neural-forecast.md): fully
+  trainable bidirectional word and causal turn GRUs, conversation-weighted CPU
+  optimization, separate epoch/policy selection and NumPy-only frozen inference.
+  The [CLI](docs/neural-forecast-cli.md) publishes bounded, validated inference
+  artifacts without pickle. Tiny trained workflows demonstrate mechanics, not
+  calibrated probabilities or established real-data performance.
 
 ```mermaid
 flowchart LR

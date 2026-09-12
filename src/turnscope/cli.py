@@ -9,7 +9,9 @@ import sys
 import tempfile
 from collections.abc import Sequence
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .audit import default_auditor
@@ -23,6 +25,7 @@ from .forecast_cli import configure_forecast_parser, run_forecast_command
 from .graph import interaction_network
 from .io import DataFormatError, conversation_to_dict, iter_path, load_path, parse_json_value
 from .models import ContextWindow, Conversation, Severity
+from .neural_forecast_cli import configure_neural_forecast_parser, run_neural_forecast_command
 from .plugins import list_plugins, load_rule, load_tokenizer
 from .policies import (
     ReplyChainPolicy,
@@ -47,12 +50,29 @@ from .transformers import (
 )
 
 
+class _ArgumentParser(argparse.ArgumentParser):
+    """Plain help throughout nested commands, even with a closed host stdout."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        if sys.version_info >= (3, 14):
+            # Formatter construction itself can probe stdout before parser.color
+            # is applied. Subparsers inherit this parser class automatically.
+            kwargs.setdefault("color", False)
+            kwargs.setdefault("formatter_class", partial(argparse.HelpFormatter, color=False))
+        super().__init__(*args, **kwargs)
+
+
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="turnscope", description=__doc__)
+    parser = _ArgumentParser(prog="turnscope", description=__doc__)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subcommands = parser.add_subparsers(dest="command", required=True)
     configure_forecast_parser(
         subcommands.add_parser("forecast", help="leakage-safe prefix event forecasting")
+    )
+    configure_neural_forecast_parser(
+        subcommands.add_parser(
+            "neural-forecast", help="bounded hierarchical neural event forecasting"
+        )
     )
     configure_context_parser(
         subcommands.add_parser("context", help="SVD-plus-ridge expected-context models")
@@ -288,6 +308,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return run_dual_context_command(args)
         if args.command == "forecast":
             return run_forecast_command(args)
+        if args.command == "neural-forecast":
+            return run_neural_forecast_command(args)
         if args.command == "classify":
             return _classify_command(args)
         if args.command == "vectors":
