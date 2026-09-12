@@ -59,6 +59,15 @@ from .graph import (
 )
 from .io import iter_conversations, iter_path
 from .models import AuditReport, ContextWindow, Conversation, Issue, Severity, Utterance
+from .neural_ablation import (
+    AblationEventForecaster,
+    AblationForecastConfig,
+    AblationForecastPrediction,
+    AblationForecastState,
+)
+from .neural_ablation_artifact import load_ablation_forecaster, save_ablation_forecaster
+from .neural_ablation_math import AblationPoolingLimits
+from .neural_ablation_train import AblationTrainingLimits, AblationTrainingResult
 from .neural_forecast import (
     HierarchicalEventForecaster,
     NeuralForecastConfig,
@@ -129,6 +138,13 @@ from .transformers import (
 )
 
 __all__ = [
+    "AblationEventForecaster",
+    "AblationForecastConfig",
+    "AblationForecastPrediction",
+    "AblationForecastState",
+    "AblationPoolingLimits",
+    "AblationTrainingLimits",
+    "AblationTrainingResult",
     "AuditReport",
     "Auditor",
     "CallableTransformer",
@@ -248,6 +264,7 @@ __all__ = [
     "linguistic_coordination",
     "linguistic_diversity",
     "list_plugins",
+    "load_ablation_forecaster",
     "load_neural_forecaster",
     "load_profiles",
     "load_rule",
@@ -260,6 +277,7 @@ __all__ = [
     "redact_stream",
     "reply_coordination",
     "reply_forest",
+    "save_ablation_forecaster",
     "save_neural_forecaster",
     "sparse_cosine",
     "speaker_profiles",

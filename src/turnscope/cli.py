@@ -25,6 +25,7 @@ from .forecast_cli import configure_forecast_parser, run_forecast_command
 from .graph import interaction_network
 from .io import DataFormatError, conversation_to_dict, iter_path, load_path, parse_json_value
 from .models import ContextWindow, Conversation, Severity
+from .neural_ablation_cli import configure_neural_ablation_parser, run_neural_ablation_command
 from .neural_forecast_cli import configure_neural_forecast_parser, run_neural_forecast_command
 from .plugins import list_plugins, load_rule, load_tokenizer
 from .policies import (
@@ -72,6 +73,11 @@ def _parser() -> argparse.ArgumentParser:
     configure_neural_forecast_parser(
         subcommands.add_parser(
             "neural-forecast", help="bounded hierarchical neural event forecasting"
+        )
+    )
+    configure_neural_ablation_parser(
+        subcommands.add_parser(
+            "neural-ablation", help="explicit three-partition neural forecasting controls"
         )
     )
     configure_context_parser(
@@ -310,6 +316,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return run_forecast_command(args)
         if args.command == "neural-forecast":
             return run_neural_forecast_command(args)
+        if args.command == "neural-ablation":
+            return run_neural_ablation_command(args)
         if args.command == "classify":
             return _classify_command(args)
         if args.command == "vectors":

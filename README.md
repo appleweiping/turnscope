@@ -48,6 +48,13 @@ fitting and model tokenizers load their own dependencies only when used.
   The [CLI](docs/neural-forecast-cli.md) publishes bounded, validated inference
   artifacts without pickle. Tiny trained workflows demonstrate mechanics, not
   calibrated probabilities or established real-data performance.
+- Three separately trained [neural controls](docs/neural-ablation.md): current
+  turn only, mean-word recurrent history, and order-erased mean history. Each
+  requires three disjoint fitting partitions and selects its own checkpoint and
+  threshold. The [control CLI](docs/neural-ablation-cli.md) and distinct closed
+  [artifact format](docs/neural-ablation-artifact.md) never reinterpret a trained
+  main model. The [installed demonstration](docs/neural-ablation-demo.md) checks
+  actual CPU fitting and Torch-free deployment, not real-language model quality.
 
 ```mermaid
 flowchart LR
@@ -253,7 +260,9 @@ See [data format](docs/data-format.md) and [architecture](docs/architecture.md) 
 - Role-transition rules cannot infer dataset-specific protocols. Configure or replace the rule when consecutive roles
   are intentional.
 - Reply references are scoped to a single conversation.
-- TurnScope audits and constructs windows; it does not redact sensitive data or run language models.
+- Pattern-based redaction cannot guarantee removal of all sensitive data. Fitted
+  forecasting models are bounded research models, not generative language models
+  or pretrained linguistic annotators.
 
 ## Roadmap
 

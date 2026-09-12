@@ -238,6 +238,38 @@ jobs:
           if report['frozen_commands_with_torch_forbidden'] != ['inspect', 'predict', 'evaluate']:
               raise RuntimeError('frozen deployment commands were not all verified')
           Path('neural-evidence/demo-report.json').write_bytes(Path('private-neural-demo/demo-report.json').read_bytes())
+      - name: Train three controls and deploy every control without Torch at inference
+        run: python -I -X utf8 installed-test/examples/neural_ablation_demo.py private-ablation-demo
+      - name: Verify control demonstration bindings and unchanged installed package
+        shell: python
+        run: |
+          import hashlib, json
+          from pathlib import Path
+          import turnscope
+          binding = json.loads(Path('neural-evidence/distribution.json').read_text(encoding='utf-8'))
+          report = json.loads(Path('private-ablation-demo/demo-report.json').read_text(encoding='utf-8'))
+          expected = dict(binding['runtime_sha256'])
+          expected['examples/neural_ablation_demo.py'] = binding['sdist_source_sha256']['examples/neural_ablation_demo.py']
+          if report['source_sha256'] != expected or report['completed'] is not True:
+              raise RuntimeError('actual control demonstration source bindings differ')
+          installed = Path(turnscope.__file__).resolve().parent
+          for name, digest in binding['runtime_sha256'].items():
+              raw = (installed / name.removeprefix('src/turnscope/')).read_bytes()
+              if hashlib.sha256(raw).hexdigest() != digest:
+                  raise RuntimeError('installed source changed during control verification')
+          variants = report['variants']
+          if [item['variant'] for item in variants] != ['current-turn.v1', 'mean-word.v1', 'order-erased.v1']:
+              raise RuntimeError('not all explicitly named control variants were demonstrated')
+          if any(item['frozen_commands_with_torch_forbidden'] != ['inspect', 'predict', 'evaluate']
+                 or item['optimizer_steps_executed'] != 4 for item in variants):
+              raise RuntimeError('actual fit/deployment command inventory differs')
+          for key in ('authored_fixture_only',):
+              if report[key] is not True:
+                  raise RuntimeError('authored control fixture boundary differs')
+          for key in ('real_data_quality_claimed', 'whole_repository_parity_claimed'):
+              if report[key] is not False:
+                  raise RuntimeError('unverified control quality claim')
+          Path('neural-evidence/ablation-demo-report.json').write_bytes(Path('private-ablation-demo/demo-report.json').read_bytes())
       # Failed test diagnostics may include authored fixture strings or parameters.
       # Model bundles and generated input files are never selected by this glob.
       - name: Upload test summaries and aggregate demo evidence; exclude model/input files

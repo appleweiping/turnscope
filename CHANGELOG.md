@@ -4,6 +4,13 @@ All notable changes follow the principles of Keep a Changelog.
 
 ## [Unreleased]
 
+- Add three explicitly named neural forecasting controls, shared untrained
+  initialization, independently selected epochs/thresholds, strict mode-specific
+  inference artifacts and `neural-ablation fit/predict/evaluate/inspect`.
+  Include an installed three-control demonstration, a fit-only pinned-corpus
+  candidate driver, and a bounded frozen-main history-order diagnostic. Authored
+  tests and training candidates do not establish real-data performance.
+
 - Add ordered hierarchical GRU event forecasting with train-only token
   vocabularies, packed CPU optimization, separate checkpoint/policy validation,
   immutable NumPy inference, closed ZIP/NPY artifacts and private-by-default
